@@ -436,7 +436,7 @@ class MobiusHelixSphere:
 # Training Loop
 # ============================================================================
 
-def run_mobius_training(num_cycles=1500, device='cpu', checkpoint_interval=100):
+def run_mobius_training(num_cycles=1500, num_nodes=50000, device='cpu', checkpoint_interval=100):
     """Run Möbius helix training"""
 
     print("\n" + "=" * 80)
@@ -450,11 +450,12 @@ def run_mobius_training(num_cycles=1500, device='cpu', checkpoint_interval=100):
     print(f"  - Exponential penalties for collapse")
     print(f"  - Target: 60-90 minutes")
     print(f"  - Cycles: {num_cycles}")
+    print(f"  - Nodes: {num_nodes:,}")
     print()
 
     # Initialize
     agent = MobiusRNNAgent(device=device, hidden_dim=4096)
-    sphere = MobiusHelixSphere(num_nodes=50000, device=device)
+    sphere = MobiusHelixSphere(num_nodes=num_nodes, device=device)
 
     # Create output directory
     output_dir = Path("results/mobius_training")
