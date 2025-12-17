@@ -44,6 +44,7 @@ import json
 
 from hhml.utils.hardware_config import HardwareConfig
 from hhml.mobius.sparse_tokamak_strips import SparseTokamakMobiusStrips
+from hhml.mobius.helical_vortex_optimizer import helical_vortex_reset, compute_vortex_stability_score
 
 
 class MultiStripRNNAgent(nn.Module):
@@ -379,6 +380,19 @@ def train_multi_strip(args):
             nonlinearity=nonlinearity
         )
         strips.field[sample_indices] = field_updates
+
+        # Helical vortex reset (if density too low and every 20 cycles)
+        current_vortex_density = (torch.abs(strips.field) < 0.3).float().mean().item()
+        if current_vortex_density < 0.05 and cycle % 20 == 10:
+            # Apply helical spectral reset
+            reset_omega = 0.3 + 0.3 * torch.sigmoid(physics_params[1]).item()  # Use nonlinearity as omega
+            strips.field = helical_vortex_reset(
+                positions=strips.positions,
+                field=strips.field,
+                omega=reset_omega,
+                vortex_target=0.7,
+                reset_strength=0.3  # Partial reset (blend with current)
+            )
 
         # Track global parameters for exploration bonus
         param_history.append([
