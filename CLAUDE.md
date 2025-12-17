@@ -680,3 +680,14 @@ Good luck with the Möbius journey! 🎭
 Format: `[test_name]_YYYYMMDD_HHMMSS.pdf`
 Example: `multi_strip_tokamak_20251216_213045.pdf`
 
+**README.md Update Policy:**
+CRITICAL: Whenever you implement new or novel features, IMMEDIATELY update README.md to reflect:
+- New scientific capabilities (e.g., vortex annihilation control)
+- Novel technical approaches (e.g., RNN parameter extensions)
+- Architectural enhancements (e.g., glass-box improvements)
+- Performance breakthroughs
+- New analysis tools or methodologies
+
+The README.md must always accurately represent the current state-of-the-art capabilities of HHmL.
+Update both the "Key Features" section and add a new subsection under "What Makes HHmL Unique?" if applicable.
+

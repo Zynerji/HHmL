@@ -9,7 +9,7 @@
 
 The HHmL system is now a **fully glass-box architecture** where the RNN controls ALL parameters. This enables systematic correlation tracking between RNN outputs and emergent spacetime phenomena.
 
-**Total Control Parameters**: 19 (all learned via reinforcement learning)
+**Total Control Parameters**: 23 (all learned via reinforcement learning, including novel vortex annihilation controls)
 
 ---
 
@@ -63,6 +63,17 @@ The HHmL system is now a **fully glass-box architecture** where the RNN controls
 | `winding_density` | 16 | 0.5 - 2.5 | Möbius winding frequency |
 | `twist_rate` | 17 | 0.5 - 2.0 | Topological twist rate |
 | `cross_coupling` | 18 | 0.0 - 1.0 | Inter-strip coupling strength |
+
+### Category 7: Vortex Annihilation (4 parameters) **NEW**
+
+| Parameter | Index | Range | Purpose |
+|-----------|-------|-------|---------|
+| `antivortex_strength` | 19 | 0.0 - 1.0 | Strength of phase-inverted antivortex injection |
+| `annihilation_radius` | 20 | 0.1 - 1.0 | Spatial extent of annihilation zone |
+| `pruning_threshold` | 21 | 0.0 - 1.0 | Quality score below which vortices are targeted |
+| `preserve_ratio` | 22 | 0.3 - 0.9 | Minimum vortex density to maintain (safety limit) |
+
+**Novelty**: These parameters enable RNN-controlled selective pruning of low-quality vortices via antivortex injection. The system learns to remove problematic vortices while preserving high-quality topological structures.
 
 ---
 

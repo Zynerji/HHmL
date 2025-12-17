@@ -25,7 +25,8 @@ The Holo-Harmonic Möbius Lattice (HHmL) is a computational framework for invest
 ### Key Features
 
 - 🎭 **Möbius Topology**: Closed-loop, boundary-free geometric structures
-- 🧠 **RNN Control**: 19 parameters autonomously optimized via reinforcement learning
+- 🧠 **RNN Control**: 23 parameters autonomously optimized via reinforcement learning
+- 🔬 **Vortex Annihilation Control**: Selective pruning of low-quality vortices via RNN-controlled antivortex injection
 - 🔍 **Glass-Box Architecture**: Complete transparency for correlation tracking
 - 📊 **Reproducible Science**: Full parameter trajectories saved for peer review
 - ⚡ **Auto-Scaling**: CPU (2K nodes) → H200 GPU (20M+ nodes)
@@ -64,7 +65,7 @@ Unlike traditional approaches using flat space or simple spheres, HHmL exploits 
 
 ### 2. Glass-Box RNN Control
 
-The RNN controls **19 parameters** across 6 categories:
+The RNN controls **23 parameters** across 7 categories:
 
 | Category | Parameters | Examples |
 |----------|-----------|----------|
@@ -74,10 +75,26 @@ The RNN controls **19 parameters** across 6 categories:
 | **Sampling (3)** | Computational | Sample ratio, neighbors, sparsity |
 | **Mode (2)** | Method selection | Sparse density, spectral weight |
 | **Extended (3)** | Topology | Winding density, twist rate, coupling |
+| **Annihilation (4)** | Vortex pruning | Antivortex strength, annihilation radius, pruning threshold, preserve ratio |
 
 **Every parameter is tracked every cycle** → Full correlation analysis possible.
 
-### 3. Reproducible & Peer-Reviewable
+### 3. Vortex Annihilation Control (Novel)
+
+HHmL features an RNN-controlled vortex annihilation system for selective quality-based pruning:
+
+- **Quality Scoring**: Each vortex scored on neighborhood density, core depth, and stability
+- **Selective Pruning**: RNN learns to remove low-quality vortices while preserving high-quality structures
+- **Antivortex Injection**: Phase-inverted fields injected near problematic vortices
+- **Learned Control**: RNN discovers optimal annihilation parameters via reinforcement learning
+  - `antivortex_strength`: How strong the antivortex field is (0-1)
+  - `annihilation_radius`: Spatial extent of annihilation zone (0.1-1.0)
+  - `pruning_threshold`: Quality below which vortices are targeted (0-1)
+  - `preserve_ratio`: Minimum vortex density to maintain (0.3-0.9)
+
+This enables **active vortex curation** - the system learns to maintain only high-quality topological structures.
+
+### 4. Reproducible & Peer-Reviewable
 
 - ✅ Complete parameter trajectories saved
 - ✅ Random seeds and hardware specs logged

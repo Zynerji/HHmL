@@ -92,7 +92,7 @@ class MultiStripRNNAgent(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 256),
             nn.ReLU(),
-            nn.Linear(256, 19)  # ALL control parameters (see mapping below)
+            nn.Linear(256, 23)  # ALL control parameters including annihilation (see mapping below)
         ).to(device)
 
         # Control parameter indices:
@@ -102,6 +102,7 @@ class MultiStripRNNAgent(nn.Module):
         # [11-13] Sampling: sample_ratio, max_neighbors_factor, sparsity_threshold
         # [14-15] Mode: sparse_density, spectral_weight
         # [16-18] Geometry2: winding_density, twist_rate, cross_coupling
+        # [19-22] Annihilation: antivortex_strength, annihilation_radius, pruning_threshold, preserve_ratio
 
         # Value head (for RL)
         self.value_head = nn.Linear(hidden_dim, 1).to(device)
@@ -155,7 +156,7 @@ class MultiStripRNNAgent(nn.Module):
         Map raw RNN outputs to proper parameter ranges
 
         Args:
-            raw_params: [19] tensor of raw outputs
+            raw_params: [23] tensor of raw outputs (19 original + 4 annihilation)
 
         Returns:
             Dictionary with all control parameters properly scaled
@@ -191,6 +192,12 @@ class MultiStripRNNAgent(nn.Module):
         twist_rate = 0.5 + 1.5 * torch.sigmoid(raw_params[17])  # 0.5 to 2.0
         cross_coupling = torch.sigmoid(raw_params[18])  # 0.0 to 1.0
 
+        # Annihilation control [19-22]
+        antivortex_strength = torch.sigmoid(raw_params[19])  # 0.0 to 1.0
+        annihilation_radius = 0.1 + 0.9 * torch.sigmoid(raw_params[20])  # 0.1 to 1.0
+        pruning_threshold = torch.sigmoid(raw_params[21])  # 0.0 to 1.0 (quality threshold)
+        preserve_ratio = 0.3 + 0.6 * torch.sigmoid(raw_params[22])  # 0.3 to 0.9 (min density to keep)
+
         return {
             'kappa': kappa,
             'delta': delta,
@@ -210,7 +217,11 @@ class MultiStripRNNAgent(nn.Module):
             'spectral_weight': spectral_weight,
             'winding_density': winding_density,
             'twist_rate': twist_rate,
-            'cross_coupling': cross_coupling
+            'cross_coupling': cross_coupling,
+            'antivortex_strength': antivortex_strength,
+            'annihilation_radius': annihilation_radius,
+            'pruning_threshold': pruning_threshold,
+            'preserve_ratio': preserve_ratio
         }
 
     def forward(self, state: torch.Tensor):
@@ -222,7 +233,7 @@ class MultiStripRNNAgent(nn.Module):
 
         Returns:
             actions: List of [nodes_per_strip] tensors (one per strip)
-            control_params: Dictionary with all 19 control parameters
+            control_params: Dictionary with all 23 control parameters (19 original + 4 annihilation)
             value: [1] scalar
             hidden: LSTM hidden state
         """
@@ -236,8 +247,8 @@ class MultiStripRNNAgent(nn.Module):
             action = torch.tanh(self.amplitude_heads[i](features))  # [-1, 1]
             actions.append(action.squeeze(0))  # [nodes_per_strip]
 
-        # UNIFIED CONTROL - RNN controls ALL parameters
-        control_raw = self.control_head(features).squeeze(0)  # [19]
+        # UNIFIED CONTROL - RNN controls ALL parameters (including annihilation)
+        control_raw = self.control_head(features).squeeze(0)  # [23]
         control_params = self.map_control_params(control_raw)
 
         # Value
@@ -246,8 +257,139 @@ class MultiStripRNNAgent(nn.Module):
         return actions, control_params, value, hidden
 
 
+def vortex_quality_score(field: torch.Tensor, positions: torch.Tensor, vortex_indices: torch.Tensor,
+                        sparsity_threshold: float = 0.3) -> torch.Tensor:
+    """
+    Compute quality score for each vortex based on multiple metrics.
+
+    Args:
+        field: Complex field values [N]
+        positions: Node positions [N, 3]
+        vortex_indices: Indices of vortex nodes [M]
+        sparsity_threshold: Threshold for vortex detection
+
+    Returns:
+        Quality scores [M] in range [0, 1], where higher = better quality
+    """
+    if len(vortex_indices) == 0:
+        return torch.tensor([], device=field.device)
+
+    scores = []
+    field_mag = torch.abs(field)
+
+    for vortex_idx in vortex_indices:
+        vortex_pos = positions[vortex_idx]
+
+        # Metric 1: Neighborhood density (isolated vortices = bad)
+        distances = torch.norm(positions - vortex_pos, dim=1)
+        nearby = (distances < 0.5) & (distances > 0.0)  # Within radius, excluding self
+        neighbor_vortices = (field_mag[nearby] < sparsity_threshold).float().mean()
+        neighborhood_score = neighbor_vortices.item()  # Higher = more neighbors = better
+
+        # Metric 2: Field magnitude at vortex core (deeper vortex = better quality)
+        core_depth = 1.0 - field_mag[vortex_idx].item()  # Invert: lower field = higher score
+
+        # Metric 3: Stability (low field gradient = stable)
+        if nearby.sum() > 0:
+            field_variance = field_mag[nearby].std().item()
+            stability_score = max(0, 1.0 - field_variance)  # Lower variance = higher score
+        else:
+            stability_score = 0.0  # Isolated vortex = unstable
+
+        # Combined score (weighted average)
+        quality = 0.4 * neighborhood_score + 0.3 * core_depth + 0.3 * stability_score
+        scores.append(quality)
+
+    return torch.tensor(scores, device=field.device)
+
+
+def controlled_annihilation(strips: SparseTokamakMobiusStrips, control_params: dict,
+                           device: str = 'cpu') -> dict:
+    """
+    Perform RNN-controlled vortex annihilation via antivortex injection.
+
+    Args:
+        strips: Multi-strip system
+        control_params: Dictionary with annihilation control parameters
+        device: Computation device
+
+    Returns:
+        Dictionary with annihilation statistics
+    """
+    cp = control_params
+
+    # Skip if antivortex strength is too low
+    if cp['antivortex_strength'] < 0.2:
+        return {'num_removed': 0, 'avg_quality_removed': 0.0, 'num_preserved': 0}
+
+    # Detect vortices across all strips
+    field_mag = torch.abs(strips.field)
+    vortex_mask = field_mag < cp['sparsity_threshold']
+    vortex_indices = torch.where(vortex_mask)[0]
+
+    if len(vortex_indices) == 0:
+        return {'num_removed': 0, 'avg_quality_removed': 0.0, 'num_preserved': 0}
+
+    # Compute quality scores for all vortices
+    quality_scores = vortex_quality_score(
+        field=strips.field,
+        positions=strips.positions,
+        vortex_indices=vortex_indices,
+        sparsity_threshold=cp['sparsity_threshold']
+    )
+
+    # Identify low-quality vortices for removal
+    low_quality_mask = quality_scores < cp['pruning_threshold']
+    low_quality_indices = vortex_indices[low_quality_mask]
+
+    # Calculate current vortex density
+    current_density = vortex_mask.float().mean().item()
+
+    # Enforce preserve_ratio: don't remove too many vortices
+    max_removable = int(len(vortex_indices) * (1.0 - cp['preserve_ratio']))
+    num_to_remove = min(len(low_quality_indices), max_removable)
+
+    if num_to_remove == 0:
+        return {'num_removed': 0, 'avg_quality_removed': 0.0, 'num_preserved': len(vortex_indices)}
+
+    # Select worst vortices
+    if num_to_remove < len(low_quality_indices):
+        # Sort by quality and take worst ones
+        sorted_indices = torch.argsort(quality_scores[low_quality_mask])
+        removal_indices = low_quality_indices[sorted_indices[:num_to_remove]]
+    else:
+        removal_indices = low_quality_indices
+
+    # Inject antivortices near targeted vortices
+    for vortex_idx in removal_indices:
+        # Create antivortex by inverting phase
+        phase_inversion = torch.exp(1j * torch.tensor(np.pi, device=device))
+
+        # Find nearby nodes within annihilation radius
+        vortex_pos = strips.positions[vortex_idx]
+        distances = torch.norm(strips.positions - vortex_pos, dim=1)
+        annihilation_zone = distances < cp['annihilation_radius']
+
+        # Apply antivortex field (inverted phase, scaled by strength)
+        original_field = strips.field[annihilation_zone].clone()
+        strips.field[annihilation_zone] = (
+            original_field * (1.0 - cp['antivortex_strength']) +
+            original_field * phase_inversion * cp['antivortex_strength']
+        )
+
+    # Calculate statistics
+    avg_quality_removed = quality_scores[low_quality_mask][:num_to_remove].mean().item() if num_to_remove > 0 else 0.0
+    num_preserved = len(vortex_indices) - num_to_remove
+
+    return {
+        'num_removed': num_to_remove,
+        'avg_quality_removed': avg_quality_removed,
+        'num_preserved': num_preserved
+    }
+
+
 def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params: torch.Tensor = None,
-                              param_history: list = None) -> float:
+                              param_history: list = None, annihilation_stats: dict = None) -> float:
     """
     Compute reward for multi-strip system
 
@@ -257,6 +399,7 @@ def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params:
     - Cross-strip coherence
     - Stability (low variance)
     - Exploration bonus (parameter variation)
+    - Annihilation quality bonus (selective pruning of low-quality vortices)
     """
     # Get field for each strip
     vortex_densities = []
@@ -322,7 +465,20 @@ def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params:
     except:
         pass  # Skip if graph not available
 
-    total_reward = density_reward + uniformity_reward + stability_penalty + exploration_bonus + spectral_bonus
+    # ANNIHILATION REWARD: Selective pruning of low-quality vortices
+    annihilation_bonus = 0
+    if annihilation_stats is not None and annihilation_stats['num_removed'] > 0:
+        # Reward for removing low-quality vortices
+        # Quality score ranges 0-1, where lower = worse quality
+        # If we removed low-quality vortices (quality < 0.5), give positive reward
+        if annihilation_stats['avg_quality_removed'] < 0.5:
+            # Good pruning: removed bad vortices
+            annihilation_bonus = 30 * (0.5 - annihilation_stats['avg_quality_removed']) * annihilation_stats['num_removed']
+        else:
+            # Bad pruning: removed good vortices (penalty)
+            annihilation_bonus = -20 * (annihilation_stats['avg_quality_removed'] - 0.5) * annihilation_stats['num_removed']
+
+    total_reward = density_reward + uniformity_reward + stability_penalty + exploration_bonus + spectral_bonus + annihilation_bonus
 
     # NaN protection: return large negative reward if NaN detected
     if np.isnan(total_reward) or np.isinf(total_reward):
@@ -337,7 +493,8 @@ def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params:
         'uniformity_reward': uniformity_reward,
         'stability_penalty': stability_penalty,
         'exploration_bonus': exploration_bonus,
-        'spectral_bonus': spectral_bonus
+        'spectral_bonus': spectral_bonus,
+        'annihilation_bonus': annihilation_bonus
     }
 
 
@@ -575,14 +732,21 @@ def train_multi_strip(args):
                 reset_strength=cp['reset_strength']  # RNN-controlled
             )
 
+        # RNN-CONTROLLED VORTEX ANNIHILATION: Selective pruning of low-quality vortices
+        # Apply annihilation every 5 cycles to allow vortex quality assessment
+        annihilation_stats = {'num_removed': 0, 'avg_quality_removed': 0.0, 'num_preserved': 0}
+        if cycle % 5 == 0:
+            annihilation_stats = controlled_annihilation(strips, cp, device)
+
         # Track ALL control parameters for correlation analysis
         param_history.append(cp.copy())  # Store full parameter dict
 
-        # Compute reward
+        # Compute reward (now includes annihilation bonus)
         reward, reward_breakdown = compute_multi_strip_reward(
             strips,
             global_params=None,  # No longer needed, using full control_params
-            param_history=param_history
+            param_history=param_history,
+            annihilation_stats=annihilation_stats
         )
 
         # RL update (convert reward to tensor for gradient computation)

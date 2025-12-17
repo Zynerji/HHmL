@@ -54,3 +54,6 @@ logs/*.log
 *.log
 *.out
 *.toc
+
+# Checkpoint files
+checkpoints/**/*.pt
