@@ -20,6 +20,7 @@ from .multiverse_generator import generate_multiverse_branches, MultiverseConfig
 from .pruning_simulator import prune_discordant, compute_coherence, PruningResult
 from .residue_analyzer import measure_dark_residue, DarkMatterMetrics
 from .cosmological_validator import validate_theory, CosmologicalTests
+from .tree_multiverse import generate_tree_multiverse
 
 __all__ = [
     'generate_multiverse_branches',
@@ -31,6 +32,7 @@ __all__ = [
     'DarkMatterMetrics',
     'validate_theory',
     'CosmologicalTests',
+    'generate_tree_multiverse',
 ]
 
 __version__ = '0.1.0'

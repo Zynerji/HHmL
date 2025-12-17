@@ -41,6 +41,7 @@ from hhml.dark_matter.multiverse_generator import (
     visualize_multiverse,
     export_branches
 )
+from hhml.dark_matter.tree_multiverse import generate_tree_multiverse
 from hhml.dark_matter.pruning_simulator import (
     prune_discordant,
     sweep_pruning_thresholds,
@@ -75,6 +76,10 @@ def parse_args():
                        help='Type of perturbation to apply')
     parser.add_argument('--quantum-decoherence', type=float, default=0.05,
                        help='Quantum decoherence strength (0-1)')
+    parser.add_argument('--tree-mode', action='store_true',
+                       help='Use tree-structured multiverse (sequential branching)')
+    parser.add_argument('--branching-factor', type=int, default=2,
+                       help='Branches per parent in tree mode (default: 2)')
 
     # Möbius strip configuration
     parser.add_argument('--num-strips', type=int, default=10,
@@ -183,7 +188,6 @@ def main():
     )
 
     # Generate multiverse branches
-    print(f"Generating {args.num_branches} multiverse branches...")
     multiverse_config = MultiverseConfig(
         num_branches=args.num_branches,
         perturbation_scale=args.perturbation_scale,
@@ -194,7 +198,12 @@ def main():
         quantum_decoherence=args.quantum_decoherence
     )
 
-    branches = generate_multiverse_branches(base_strips, multiverse_config, device)
+    if args.tree_mode:
+        print(f"Generating {args.num_branches} multiverse branches (TREE MODE, branching_factor={args.branching_factor})...")
+        branches = generate_tree_multiverse(base_strips, multiverse_config, args.branching_factor, device)
+    else:
+        print(f"Generating {args.num_branches} multiverse branches...")
+        branches = generate_multiverse_branches(base_strips, multiverse_config, device)
 
     t1 = time.time()
     print(f"✓ Generated {len(branches)} branches in {t1-t0:.1f}s")
