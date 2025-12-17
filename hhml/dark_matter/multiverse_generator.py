@@ -47,7 +47,7 @@ class MultiverseConfig:
     """Random seed for reproducibility."""
 
     perturbation_type: str = 'gaussian'
-    """Type of perturbation: 'gaussian', 'uniform', 'quantum_noise'."""
+    """Type of perturbation: 'gaussian', 'uniform', 'quantum_noise', 'independent'."""
 
     topology_variance: bool = False
     """If True, allow topology variations (strip count, twist angle)."""
@@ -160,6 +160,8 @@ def generate_multiverse_branches(
             _apply_uniform_perturbations(branch_geometry, config.perturbation_scale)
         elif config.perturbation_type == 'quantum_noise':
             _apply_quantum_noise(branch_geometry, config.perturbation_scale, config.quantum_decoherence)
+        elif config.perturbation_type == 'independent':
+            _apply_independent_initialization(branch_geometry, i, config.coherence_seed)
         else:
             raise ValueError(f"Unknown perturbation type: {config.perturbation_type}")
 
@@ -252,6 +254,50 @@ def _apply_quantum_noise(geometry, scale: float, decoherence: float):
     thermal_noise = torch.complex(thermal_noise_real, thermal_noise_imag)
 
     geometry.field = geometry.field + thermal_noise
+
+
+def _apply_independent_initialization(geometry, branch_id: int, base_seed: int):
+    """
+    Generate completely independent field configuration (not a perturbation).
+
+    Creates truly different multiverse branches by regenerating field
+    with different random seed, rather than perturbing existing field.
+
+    This represents genuinely different quantum timelines, not
+    slight variations of the same timeline.
+
+    Args:
+        geometry: Möbius strip geometry to reinitialize
+        branch_id: Unique branch identifier for seed
+        base_seed: Base random seed
+    """
+    # Unique seed for this branch
+    branch_seed = base_seed + branch_id * 1000
+
+    # Save RNG state
+    torch_state = torch.get_rng_state()
+    numpy_state = np.random.get_state()
+
+    # Set branch-specific seed
+    torch.manual_seed(branch_seed)
+    np.random.seed(branch_seed)
+
+    # Completely regenerate amplitudes (range 0.5 to 2.0)
+    geometry.amplitudes = torch.rand_like(geometry.amplitudes) * 1.5 + 0.5
+
+    # Completely regenerate phases (uniform 0 to 2π)
+    geometry.phases = torch.rand_like(geometry.phases) * 2 * np.pi
+
+    # Completely regenerate field
+    # Use different amplitude/phase combination
+    field_amp = torch.rand(geometry.field.shape, device=geometry.field.device) * 2.0
+    field_phase = torch.rand(geometry.field.shape, device=geometry.field.device) * 2 * np.pi
+
+    geometry.field = field_amp * torch.exp(1j * field_phase)
+
+    # Restore RNG state
+    torch.set_rng_state(torch_state)
+    np.random.set_state(numpy_state)
 
 
 def compute_branch_divergence(branch1: MultiverseBranch,

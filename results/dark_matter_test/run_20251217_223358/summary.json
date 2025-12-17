@@ -1,0 +1,52 @@
+{
+  "timestamp": "20251217_223358",
+  "config": {
+    "num_branches": 15,
+    "perturbation_scale": 0.15,
+    "perturbation_type": "quantum_noise",
+    "quantum_decoherence": 0.05,
+    "num_strips": 10,
+    "nodes_per_strip": 2000,
+    "coherence_threshold": 0.82,
+    "sweep_thresholds": false,
+    "find_optimal": true,
+    "target_dark_fraction": 0.27,
+    "device": "cuda",
+    "output_dir": "results/dark_matter_test",
+    "seed": 42
+  },
+  "multiverse": {
+    "num_branches": 15,
+    "perturbation_scale": 0.15,
+    "perturbation_type": "quantum_noise"
+  },
+  "pruning": {
+    "threshold": 0.5,
+    "kept_branches": 1,
+    "pruned_branches": 14,
+    "dark_fraction": 0.9332305794767503,
+    "hologram_quality": 0.376727819442749,
+    "entropy_conservation": 0.9999448507994844
+  },
+  "dark_matter_metrics": {
+    "mass_fraction": 0.9332305794767503,
+    "entropy_ratio": 0.9333080530399582,
+    "fractal_dimension": 1.795201755852943,
+    "hopkins_clustering": 0.9956122922511533,
+    "rotation_curve_match": 0.40542189765014086,
+    "curvature_residue": 0.06278726059411253,
+    "field_coherence": 0.2929219970336327
+  },
+  "cosmological_tests": {
+    "lambda_cdm_match": 0.0021715679933828184,
+    "cmb_match": 0.40130294079602974,
+    "lss_match": 0.16293649872724947,
+    "lensing_match": 0.6988963872984763,
+    "rotation_curve": 0.40542189765014086,
+    "entropy_score": 0.9997794031979375,
+    "overall_score": 0.44508478261053613,
+    "tests_passed": 1,
+    "tests_failed": 5
+  },
+  "verdict": "FALSIFIED"
+}

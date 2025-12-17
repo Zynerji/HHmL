@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument('--perturbation-scale', type=float, default=0.15,
                        help='Amplitude of random perturbations (0-1)')
     parser.add_argument('--perturbation-type', type=str, default='quantum_noise',
-                       choices=['gaussian', 'uniform', 'quantum_noise'],
+                       choices=['gaussian', 'uniform', 'quantum_noise', 'independent'],
                        help='Type of perturbation to apply')
     parser.add_argument('--quantum-decoherence', type=float, default=0.05,
                        help='Quantum decoherence strength (0-1)')
