@@ -535,30 +535,30 @@ HHmL results are peer-reviewable because:
 
 \begin{verbatim}
 HHmL/
-├── hhml/                      # Core Python package
-│   ├── mobius/               # Möbius-specific modules
-│   │   ├── sparse_tokamak_strips.py
-│   │   ├── helical_vortex_optimizer.py
-│   │   └── ...
-│   ├── resonance/            # Field dynamics
-│   ├── tensor_networks/      # MERA holography
-│   └── utils/                # Hardware config, validation
-├── scripts/                   # Training scripts
-│   ├── train_multi_strip.py
-│   └── ...
-├── test_cases/               # Test configurations & results
-│   ├── multi_strip/
-│   │   ├── results/         # JSON simulation outputs
-│   │   └── whitepapers/     # Generated PDFs
-│   ├── benchmarks/
-│   └── ...
-├── web_monitor/              # Whitepaper generation
-│   └── whitepaper_generator.py
-├── docs/                     # Documentation
-├── archive/                  # Legacy files
-├── RNN_PARAMETER_MAPPING.md  # Parameter correlation guide
-├── CLAUDE.md                 # AI assistant context
-└── README.tex                # This file
+|-- hhml/                      # Core Python package
+|   |-- mobius/                # Mobius-specific modules
+|   |   |-- sparse_tokamak_strips.py
+|   |   |-- helical_vortex_optimizer.py
+|   |   +-- ...
+|   |-- resonance/             # Field dynamics
+|   |-- tensor_networks/       # MERA holography
+|   +-- utils/                 # Hardware config, validation
+|-- scripts/                   # Training scripts
+|   |-- train_multi_strip.py
+|   +-- ...
+|-- test_cases/                # Test configurations & results
+|   |-- multi_strip/
+|   |   |-- results/           # JSON simulation outputs
+|   |   +-- whitepapers/       # Generated PDFs
+|   |-- benchmarks/
+|   +-- ...
+|-- web_monitor/               # Whitepaper generation
+|   +-- whitepaper_generator.py
+|-- docs/                      # Documentation
+|-- archive/                   # Legacy files
+|-- RNN_PARAMETER_MAPPING.md   # Parameter correlation guide
+|-- CLAUDE.md                  # AI assistant context
++-- README.tex                 # This file
 \end{verbatim}
 
 \section{Citation}

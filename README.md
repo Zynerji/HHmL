@@ -8,6 +8,16 @@
 
 ---
 
+> ### 📖 **Deep Dive: Complete Mathematical Documentation**
+>
+> **For the full scientific treatment with mathematical framework, vector graphics, and comprehensive derivations:**
+>
+> **[📄 Download README.pdf](README.pdf)** (11 pages, complete LaTeX documentation)
+>
+> *Includes: Möbius strip parameterization, field dynamics equations, RNN architecture details, TikZ geometry visualizations, and peer-review quality mathematical rigor.*
+
+---
+
 ## Overview
 
 The Holo-Harmonic Möbius Lattice (HHmL) is a computational framework for investigating emergent phenomena in topologically non-trivial field configurations. By combining **Möbius strip topology** with **RNN-controlled parameter spaces**, HHmL enables systematic exploration of correlations between topological configurations and emergent vortex dynamics.
