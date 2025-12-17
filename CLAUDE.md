@@ -825,10 +825,13 @@ Good luck with the Möbius journey! 🎭
 
 **Standard Development Workflow:**
 
-1. **Run Simulation** → Results saved to test_cases/[test_name]/results/
-2. **Generate Whitepaper** → Auto-created in test_cases/[test_name]/whitepapers/
-3. **Analyze Correlations** → Use RNN_PARAMETER_MAPPING.md guide
-4. **Iterate** → Resume training from checkpoints for sequential learning
+1. **Run Simulation with Live Dashboard** → Monitor in real-time at http://localhost:8000
+2. **Results Auto-Saved** → test_cases/[test_name]/results/
+3. **Generate Whitepaper** → Auto-created in test_cases/[test_name]/whitepapers/
+4. **Analyze Correlations** → Use RNN_PARAMETER_MAPPING.md guide
+5. **Iterate** → Resume training from checkpoints for sequential learning
+
+**IMPORTANT: Always add live dashboard to training scripts for real-time monitoring**
 
 **File Organization:**
 - Scripts in `scripts/`
@@ -850,4 +853,89 @@ CRITICAL: Whenever you implement new or novel features, IMMEDIATELY update READM
 
 The README.md must always accurately represent the current state-of-the-art capabilities of HHmL.
 Update both the "Key Features" section and add a new subsection under "What Makes HHmL Unique?" if applicable.
+
+---
+
+## Live Dashboard Integration (MANDATORY for All Training)
+
+**Location**: `hhml/utils/live_dashboard.py`
+**Documentation**: `docs/LIVE_DASHBOARD_INTEGRATION.md`
+
+**CRITICAL**: Always integrate the live dashboard into training scripts for real-time monitoring.
+
+### Quick Integration (4 Steps)
+
+```python
+from hhml.utils.live_dashboard import TrainingDashboard
+
+# 1. Initialize before training loop
+dashboard = TrainingDashboard(port=8000, auto_open=True)
+dashboard.start()
+
+try:
+    for cycle in range(num_cycles):
+        # 2. Your training code here
+        # ...
+
+        # 3. Update dashboard with current metrics
+        dashboard.update({
+            'cycle': cycle,
+            'density': vortex_density,        # 0-1 float
+            'quality': vortex_quality,        # 0-1 float
+            'reward': reward,                 # float
+            'annihilations': num_removed,     # int
+            'cycles_at_target': cycles_stable # int
+        })
+
+finally:
+    # 4. Clean shutdown
+    dashboard.stop()
+```
+
+### Features
+- **Real-time charts**: Density, quality, reward, annihilations, stability
+- **Live statistics**: Current cycle, density %, quality, reward, etc.
+- **Auto-refresh**: No manual browser refresh needed
+- **Auto-open**: Browser window opens automatically
+- **Lightweight**: Uses stdlib only (http.server, threading)
+- **Thread-safe**: Non-blocking updates
+
+### Multiple Training Sessions
+Use different ports for concurrent sessions:
+```python
+dashboard1 = TrainingDashboard(port=8000)  # Training 1
+dashboard2 = TrainingDashboard(port=8001)  # Training 2
+```
+
+### Access Dashboard
+- Opens automatically when `dashboard.start()` is called
+- Manual access: `http://localhost:8000`
+- Works on any browser (Chrome, Firefox, Edge, Safari)
+
+### Required Metrics
+The dashboard expects these keys in `dashboard.update()`:
+- `cycle`: Current training cycle (int)
+- `density`: Vortex density 0-1 (float)
+- `quality`: Vortex quality 0-1 (float)
+- `reward`: Current reward (float)
+- `annihilations`: Number removed this cycle (int)
+- `cycles_at_target`: Consecutive cycles at target density (int)
+
+### Testing the Dashboard
+Run standalone demo:
+```bash
+python -m hhml.utils.live_dashboard
+```
+This simulates 100 cycles of training data for 60 seconds.
+
+### When Writing New Training Scripts
+**ALWAYS** include live dashboard integration:
+1. Import at top of file
+2. Start before training loop
+3. Update inside training loop (every cycle or every N cycles)
+4. Stop in `finally` block (ensures cleanup)
+
+See `docs/LIVE_DASHBOARD_INTEGRATION.md` for complete examples and troubleshooting.
+
+---
 
