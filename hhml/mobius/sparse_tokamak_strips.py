@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Dense Tokamak Multi-Strip Möbius Geometry
-==========================================
+Intermediate-Sparse Tokamak Multi-Strip Möbius Geometry
+========================================================
 Implements nested Möbius strips with D-shaped cross-sections and splined paths.
 
-UPDATED: Now uses DENSE mode exclusively - all nodes interact with all nodes.
+UPDATED: Uses INTERMEDIATE sparsity (50-80%) for balanced vortex dynamics.
+
+Sparsity Strategy:
+- Dense mode (0% sparse): Prevents vortex formation
+- Very sparse (98% sparse): Allows vortex formation but causes collapse
+- INTERMEDIATE (50-80% sparse): Stable vortex dynamics (Goldilocks zone)
 
 Key Features:
 - Miller parameterization for tokamak D-shaped cross-sections
 - Cubic B-spline winding paths for collision avoidance
-- DENSE all-to-all distance matrix for maximum accuracy
-- Full inter-node interactions (no sparsity approximation)
-- Suitable for GPU acceleration and small-to-medium scale
+- Adaptive neighbor count: 500-2000 neighbors per node
+- KD-tree spatial indexing for efficient neighbor queries
+- Balanced connectivity for vortex stability
 
 Author: HHmL Framework
 Date: 2025-12-16
@@ -189,13 +194,13 @@ class SparseTokamakMobiusStrips:
         self.total_nodes = num_strips * nodes_per_strip
         self.device = device
         self.sparse_threshold = sparse_threshold
-        self.max_neighbors = max_neighbors
+        self.max_neighbors = max_neighbors  # Default, may be overridden by _determine_sparse_mode
 
         # Tokamak cross-section generator
         self.cross_section = TokamakCrossSection(kappa, delta)
         self.r_minor = r_minor
 
-        # AUTO-DETECT: Sparse or Dense mode?
+        # AUTO-DETECT: Sparse or Dense mode? (may update self.max_neighbors)
         self.use_sparse = self._determine_sparse_mode(force_sparse, force_dense)
 
         print(f"\nInitializing {'SPARSE' if self.use_sparse else 'DENSE'} Tokamak Multi-Strip Geometry:")
@@ -205,7 +210,7 @@ class SparseTokamakMobiusStrips:
         print(f"  Tokamak params: kappa={kappa}, delta={delta}")
         if self.use_sparse:
             print(f"  Sparse threshold: {sparse_threshold}")
-            print(f"  Max neighbors: {max_neighbors}")
+            print(f"  Max neighbors: {self.max_neighbors}")
         else:
             print(f"  Mode: DENSE (all-to-all interactions)")
             print(f"  Estimated dense edges: {self.total_nodes * (self.total_nodes - 1):,}")
@@ -241,17 +246,32 @@ class SparseTokamakMobiusStrips:
         """
         Determine whether to use sparse or dense mode
 
-        UPDATED: Always use DENSE mode for maximum accuracy
-        Sparse mode removed - all nodes interact with all nodes
+        UPDATED: Use INTERMEDIATE sparse mode (50-80% sparsity) for balanced vortex dynamics
+        - Dense (0% sparse): No vortex formation
+        - Very sparse (98%): Vortex collapse
+        - Intermediate (50-80%): Stable vortices (goal)
 
         Returns:
-            Always False (dense mode)
+            True for sparse mode (with higher neighbor count), False for fully dense
         """
-        if force_sparse:
-            print("  WARNING: force_sparse ignored - sparse mode disabled")
+        if force_dense:
+            print("  Using DENSE mode (0% sparsity)")
+            return False
 
-        # Always use DENSE mode
-        return False
+        # Use intermediate sparse mode by default
+        # Adjust max_neighbors AND sparse_threshold based on node count for 50-80% sparsity
+        if self.total_nodes < 5000:
+            # Small scale: use more neighbors for stability
+            self.max_neighbors = min(1000, self.total_nodes // 2)
+            self.sparse_threshold = 0.8  # Larger radius to capture more neighbors
+            print(f"  Using INTERMEDIATE sparse mode (target ~50-70% sparsity, {self.max_neighbors} neighbors, r={self.sparse_threshold})")
+        else:
+            # Larger scale: scale neighbors with sqrt(N)
+            self.max_neighbors = min(2000, int(np.sqrt(self.total_nodes) * 20))
+            self.sparse_threshold = 0.6  # Moderate radius for larger systems
+            print(f"  Using INTERMEDIATE sparse mode (target ~70-80% sparsity, {self.max_neighbors} neighbors, r={self.sparse_threshold})")
+
+        return True
 
     def _generate_strips(self):
         """Generate all strip geometries with splined paths"""
