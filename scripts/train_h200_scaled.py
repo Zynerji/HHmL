@@ -281,7 +281,12 @@ if __name__ == '__main__':
 
     # Load checkpoint if resuming
     start_cycle = 0
-    metrics = {'rewards': [], 'vortex_densities': [], 'quality_scores': []}
+    metrics = {
+        'rewards': [],
+        'vortex_densities': [],
+        'quality_scores': [],
+        'param_history': []  # Required by save_checkpoint
+    }
     if args.resume:
         print(f"\n{'='*80}")
         print("RESUMING FROM CHECKPOINT")
