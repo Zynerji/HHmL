@@ -302,7 +302,7 @@ def _compute_fractal_dimension(branches: List[MultiverseBranch],
     # Linear regression: log(count) = D * log(1/box_size) + const
     # D = slope
     log_box_sizes = np.log(1.0 / box_sizes)
-    log_counts = np.log(counts + 1)  # +1 to avoid log(0)
+    log_counts = np.log(np.array(counts) + 1)  # +1 to avoid log(0)
 
     # Fit line
     coeffs = np.polyfit(log_box_sizes, log_counts, 1)
