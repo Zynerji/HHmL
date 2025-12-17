@@ -77,7 +77,7 @@ class OptimizedMobiusHelixSphere:
         # Compile the evolution kernel
         print("  Compiling evolution kernel (may take 10s)...")
         self._evolve_kernel = self._create_compiled_kernel()
-        print("  ✓ Compilation complete")
+        print("  [OK] Compilation complete")
 
     def _generate_mobius_helix(self, w_windings, tau_torsion=0.0):
         """Generate Möbius helix lattice"""
@@ -93,7 +93,6 @@ class OptimizedMobiusHelixSphere:
     def _create_compiled_kernel(self):
         """Create compiled evolution kernel for speed"""
 
-        @torch.compile(mode="reduce-overhead")
         def evolve_field_fast(x, y, z, amplitudes, frequencies, phases,
                              sample_indices, t_now):
             """
@@ -134,7 +133,18 @@ class OptimizedMobiusHelixSphere:
 
             return field_updates
 
-        return evolve_field_fast
+        # Try to compile if supported
+        try:
+            import sys
+            if sys.version_info >= (3, 14):
+                print("  ! torch.compile not supported on Python 3.14+, using uncompiled version")
+                return evolve_field_fast
+            else:
+                compiled_kernel = torch.compile(evolve_field_fast, mode="reduce-overhead")
+                return compiled_kernel
+        except:
+            print("  ! torch.compile failed, using uncompiled version")
+            return evolve_field_fast
 
     def apply_structure_params(self, params):
         """Apply structural parameter changes"""
@@ -150,15 +160,11 @@ class OptimizedMobiusHelixSphere:
             self.tau_torsion = 0.9 * self.tau_torsion + 0.1 * tau_new
             regenerate = regenerate or abs(self.tau_torsion - self._last_tau) > 0.1
 
-        if 'num_sites' in params:
-            sites_new = int(params['num_sites'].item())
-            target_nodes = int(0.95 * self.num_nodes + 0.05 * sites_new)
-            target_nodes = max(10000, min(target_nodes, 100000))
-
-            if abs(target_nodes - self.num_nodes) > 1000:
-                self.num_nodes = target_nodes
-                regenerate = True
-                print(f"  [Adjusting helical sites: {self.num_nodes:,}]")
+        # DISABLED: num_sites control - prevents constant expensive regeneration
+        # if 'num_sites' in params:
+        #     sites_new = int(params['num_sites'].item())
+        #     # Keep nodes fixed for performance
+        #     pass
 
         if regenerate:
             with torch.no_grad():

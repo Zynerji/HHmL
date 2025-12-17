@@ -125,7 +125,7 @@ class VortexTracker:
                         # Similar phases → MERGE (same-sign charges)
                         self.merge_events.append({
                             'cycle': len(self.history),
-                            'count': np.sum(nearby),
+                            'count': int(np.sum(nearby)),
                             'position': curr_pos.tolist(),
                             'type': 'MERGE',
                             'mechanism': 'Same-charge vortices attracted and merged'
@@ -134,7 +134,7 @@ class VortexTracker:
                         # Opposite phases → ANNIHILATION (opposite charges)
                         self.annihilation_events.append({
                             'cycle': len(self.history),
-                            'count': np.sum(nearby),
+                            'count': int(np.sum(nearby)),
                             'position': curr_pos.tolist(),
                             'type': 'ANNIHILATION',
                             'mechanism': 'Opposite-charge vortices canceled out'
@@ -151,7 +151,7 @@ class VortexTracker:
                     # One previous vortex became multiple
                     self.collision_events.append({
                         'cycle': len(self.history),
-                        'count': np.sum(nearby),
+                        'count': int(np.sum(nearby)),
                         'position': prev_pos.tolist(),
                         'type': 'SPLIT',
                         'mechanism': 'High-energy vortex fragmented into multiple'

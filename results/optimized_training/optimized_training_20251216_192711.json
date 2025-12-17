@@ -1,0 +1,36 @@
+{
+  "configuration": {
+    "hidden_dim": 512,
+    "num_nodes": 8000,
+    "target_time_minutes": 3.0,
+    "device": "cpu",
+    "optimizations_enabled": [
+      "torch.compile",
+      "reduced_sampling",
+      "evolution_skip",
+      "vectorized_compute",
+      "lazy_regeneration"
+    ]
+  },
+  "performance": {
+    "total_time_seconds": 205.067645072937,
+    "total_cycles": 10,
+    "avg_cycle_time": 20.506728315353392,
+    "cycles_per_second": 0.04876439672598411,
+    "baseline_cycle_time": 1.0,
+    "actual_speedup": 0.048764482789353567
+  },
+  "vortex_statistics": {
+    "total_cycles": 10,
+    "merge_events": 0,
+    "annihilation_events": 0,
+    "split_events": 157723,
+    "avg_vortex_count": 18826.3,
+    "vortex_density_std": 5147.843860297241,
+    "collision_details": {
+      "merges": [],
+      "annihilations": [],
+      "splits": [
+        {
+          "cycle": 1,
+          "count": 

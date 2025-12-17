@@ -377,6 +377,241 @@ Same as iVHL:
 
 ---
 
+## Common Errors and Fixes (HHmL Development Log)
+
+**Last Updated**: 2025-12-16
+
+This section documents all errors encountered during HHmL development and their solutions, to prevent future recurrence.
+
+### 1. Unicode Encoding Errors (Windows CP1252)
+
+**Error**: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`
+
+**Cause**: Windows console uses CP1252 encoding by default, cannot display Unicode characters like ✓ (U+2713), ✗ (U+2717), × (U+00D7)
+
+**Locations Affected**:
+- `run_optimized_3min.py`
+- `optimized_sphere.py`
+- `generate_pdf_report.py`
+- `test_mobius_minimal.py`
+
+**Solution**:
+Replace all Unicode characters with ASCII equivalents:
+- `✓` → `[OK]`
+- `✗` → `[FAIL]` or `[WARNING]`
+- `×` → `x`
+
+**Prevention**: Always use ASCII-only characters for terminal output on Windows. Use UTF-8 only in file writes with explicit `encoding='utf-8'`.
+
+---
+
+### 2. torch.compile Not Supported on Python 3.14+
+
+**Error**: `RuntimeError: torch.compile is not supported on Python 3.14+`
+
+**Cause**: PyTorch 2.9.1 doesn't support `torch.compile()` on Python 3.14.2
+
+**Location**: `optimized_sphere.py` line 143
+
+**Solution**:
+```python
+try:
+    if sys.version_info >= (3, 14):
+        print("  ! torch.compile not supported on Python 3.14+, using uncompiled version")
+        return evolve_field_fast
+    else:
+        return torch.compile(evolve_field_fast, mode="reduce-overhead")
+except:
+    return evolve_field_fast
+```
+
+**Prevention**: Always check Python version before using torch.compile(). Provide uncompiled fallback.
+
+---
+
+### 3. AttributeError: 'MobiusHelixSphere' has no attribute 'positions'
+
+**Error**: `AttributeError: 'MobiusHelixSphere' object has no attribute 'positions'`
+
+**Cause**: Sphere stores coordinates as separate `x`, `y`, `z` arrays, not combined `positions` array
+
+**Location**: `train_local_scaled.py` VortexTracker.detect_vortices()
+
+**Solution**:
+```python
+# WRONG
+pos = sphere.positions[idx]
+
+# CORRECT
+pos = np.array([
+    sphere.x[idx].item(),
+    sphere.y[idx].item(),
+    sphere.z[idx].item()
+])
+```
+
+**Prevention**: Check sphere class API before accessing attributes. Use individual coordinate arrays.
+
+---
+
+### 4. JSON Serialization Error (numpy.int64)
+
+**Error**: `TypeError: Object of type int64 is not JSON serializable`
+
+**Cause**: NumPy integers not serializable to JSON by default
+
+**Location**: `train_local_scaled.py` collision event tracking
+
+**Solution**:
+```python
+# WRONG
+'count': np.sum(nearby)
+
+# CORRECT
+'count': int(np.sum(nearby))
+```
+
+**Prevention**: Always wrap NumPy scalars with `int()` or `float()` before JSON serialization.
+
+---
+
+### 5. Sphere Constant Regeneration (Performance Degradation)
+
+**Error**: Sphere regenerating nodes every cycle (10K→12K→14K→...), defeating optimization. Cycle time 20+ seconds instead of <1 second.
+
+**Cause**: RNN `num_sites` parameter continuously changing node count, triggering expensive geometry regeneration
+
+**Location**: `optimized_sphere.py` line 163-167
+
+**Solution**:
+Disable `num_sites` parameter updates:
+```python
+# DISABLED: num_sites control - prevents constant expensive regeneration
+# if 'num_sites' in params:
+#     sites_new = int(params['num_sites'].item())
+#     # Keep nodes fixed for performance
+#     pass
+```
+
+**Prevention**: When optimizing for speed, fix expensive structural parameters (like node count). Only allow fast parameters (amplitudes, phases) to change.
+
+---
+
+### 6. LaTeX Percentage Sign Not Escaped
+
+**Error**:
+```
+! LaTeX Error: Invalid UTF-8 byte "F6.
+! Extra alignment tab has been changed to \cr.
+```
+
+**Cause**: `%` is a comment character in LaTeX. Python format string `.2%` produces "100.00%", but LaTeX interprets everything after `%` as a comment, truncating the line and breaking table structure.
+
+**Location**: `generate_pdf_report.py` lines 68, 141-148, 248, 276
+
+**Solution**:
+```python
+# Add helper function
+def fmt_pct(value):
+    """Format percentage and escape for LaTeX"""
+    return f"{value:.2%}".replace('%', '\\%')
+
+# Use instead of direct formatting
+# WRONG
+''' + f"{final['vortex_density']:.1%}" + r'''
+
+# CORRECT
+''' + fmt_pct(final['vortex_density']) + r'''
+```
+
+**Prevention**: Always escape LaTeX special characters (%, $, &, #, _, {}, ^, ~, \). Create helper functions for common patterns.
+
+---
+
+### 7. LaTeX File Not Written with UTF-8 Encoding
+
+**Error**: `! LaTeX Error: Invalid UTF-8 byte` (with correct `\usepackage[utf8]{inputenc}`)
+
+**Cause**: Python `open()` defaults to system encoding (CP1252 on Windows), not UTF-8. LaTeX file written with wrong encoding.
+
+**Location**: `generate_pdf_report.py` line 326
+
+**Solution**:
+```python
+# WRONG
+with open(tex_file, 'w') as f:
+    f.write(latex_content)
+
+# CORRECT
+with open(tex_file, 'w', encoding='utf-8') as f:
+    f.write(latex_content)
+```
+
+**Prevention**: Always specify `encoding='utf-8'` when writing text files, especially for LaTeX/Markdown/JSON.
+
+---
+
+### 8. Python Ternary Operator Precedence Bug (String Truncation)
+
+**Error**: LaTeX file truncated mid-document, missing `\end{document}`
+
+**Cause**: Incorrect Python ternary operator placement in string concatenation. Without parentheses, operator precedence causes string template to be cut off.
+
+**Location**: `generate_pdf_report.py` line 223
+
+**Solution**:
+```python
+# WRONG (cuts off entire rest of string!)
+''' + f"{x:.2f}" if len(arr) > 0 else '0.00' + r'''
+
+# CORRECT
+''' + (f"{x:.2f}" if len(arr) > 0 else '0.00') + r'''
+```
+
+**Explanation**: Without parentheses, Python evaluates as:
+```python
+(''' + f"{x:.2f}") if len(arr) > 0 else ('0.00' + r'''...)
+```
+The second half (`'0.00' + r'''...`) is never concatenated.
+
+**Prevention**: Always wrap ternary expressions in parentheses when inside string concatenation chains.
+
+---
+
+### 9. reward.item() AttributeError (Float vs Tensor)
+
+**Error**: `AttributeError: 'float' object has no attribute 'item'`
+
+**Cause**: `sphere.compute_reward()` sometimes returns `float`, sometimes `torch.Tensor`, depending on computation path
+
+**Location**: `train_local_scaled.py` metrics tracking
+
+**Solution**:
+```python
+# WRONG
+metrics['rewards'].append(reward.item())
+
+# CORRECT
+metrics['rewards'].append(reward if isinstance(reward, float) else reward.item())
+```
+
+**Prevention**: Check type before calling `.item()`, or normalize return types in compute_reward().
+
+---
+
+### Summary of Prevention Best Practices
+
+1. **Windows Compatibility**: Use ASCII-only for terminal output
+2. **PyTorch Version Checks**: Always provide fallbacks for version-dependent features
+3. **JSON Serialization**: Wrap NumPy types with native Python types
+4. **LaTeX Special Characters**: Escape %, $, &, #, _, {}, ^, ~, \
+5. **File Encoding**: Always specify `encoding='utf-8'` for text files
+6. **String Concatenation**: Wrap ternary operators in parentheses
+7. **Type Checking**: Verify types before calling type-specific methods (.item(), .numpy(), etc.)
+8. **Performance Parameters**: Fix expensive structural parameters when optimizing
+
+---
+
 ## Questions to Ask User When Resuming
 
 1. "What aspect of HHmL would you like to work on?"
