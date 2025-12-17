@@ -91,6 +91,13 @@ class MultiStripRNNAgent(nn.Module):
             nn.Linear(256, 4)  # kappa, delta, cross_coupling, vortex_target
         ).to(device)
 
+        # Physics control head (NEW: RNN-controlled wave physics)
+        self.physics_head = nn.Sequential(
+            nn.Linear(hidden_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 4)  # damping, nonlinearity, amplitude_variance, vortex_seed_strength
+        ).to(device)
+
         # Value head (for RL)
         self.value_head = nn.Linear(hidden_dim, 1).to(device)
 
@@ -148,6 +155,7 @@ class MultiStripRNNAgent(nn.Module):
         Returns:
             actions: List of [nodes_per_strip] tensors (one per strip)
             global_params: [4] tensor (kappa, delta, coupling, vortex_target)
+            physics_params: [4] tensor (damping, nonlinearity, amp_variance, vortex_seed)
             value: [1] scalar
             hidden: LSTM hidden state
         """
@@ -170,10 +178,19 @@ class MultiStripRNNAgent(nn.Module):
 
         global_params = torch.stack([kappa, delta, coupling, vortex_target])
 
+        # Physics control parameters (NEW)
+        physics_raw = self.physics_head(features).squeeze(0)  # [4]
+        damping = 0.05 + 0.15 * torch.sigmoid(physics_raw[0])  # 0.05 to 0.2 (small damping)
+        nonlinearity = torch.tanh(physics_raw[1])  # -1 to 1 (can be negative or positive)
+        amp_variance = 0.5 + 1.5 * torch.sigmoid(physics_raw[2])  # 0.5 to 2.0 (amplitude spread)
+        vortex_seed = torch.sigmoid(physics_raw[3])  # 0 to 1 (vortex seeding strength)
+
+        physics_params = torch.stack([damping, nonlinearity, amp_variance, vortex_seed])
+
         # Value
         value = self.value_head(features).squeeze()
 
-        return actions, global_params, value, hidden
+        return actions, global_params, physics_params, value, hidden
 
 
 def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params: torch.Tensor = None,
@@ -320,13 +337,20 @@ def train_multi_strip(args):
         # Encode state
         state = agent.encode_state(strips)
 
-        # RNN forward
-        actions, global_params, value, hidden = agent.forward(state)
+        # RNN forward (now includes physics parameters)
+        actions, global_params, physics_params, value, hidden = agent.forward(state)
 
         # Add exploration noise to global parameters (anneal over time)
         exploration_noise = 0.1 * (1.0 - cycle / num_cycles)  # Decay from 0.1 to 0
         if exploration_noise > 0:
             global_params = global_params + torch.randn_like(global_params) * exploration_noise
+            physics_params = physics_params + torch.randn_like(physics_params) * exploration_noise * 0.5
+
+        # Extract physics parameters
+        damping = physics_params[0].item()
+        nonlinearity = physics_params[1].item()
+        amp_variance = physics_params[2].item()
+        vortex_seed_strength = physics_params[3].item()
 
         # Apply actions to strips (detach to avoid backprop through environment)
         for strip_idx in range(num_strips):
@@ -334,15 +358,26 @@ def train_multi_strip(args):
             strip_mask = strips.strip_indices == strip_idx
             strip_node_indices = torch.where(strip_mask)[0]
 
-            # Apply amplitude adjustments (detach action)
+            # Apply amplitude adjustments (detach action) with RNN-controlled variance
             action = actions[strip_idx].detach()
-            strips.amplitudes[strip_node_indices] += action * 0.05
+            strips.amplitudes[strip_node_indices] += action * 0.05 * amp_variance
             strips.amplitudes[strip_node_indices] = torch.clamp(
-                strips.amplitudes[strip_node_indices], 0.5, 5.0
+                strips.amplitudes[strip_node_indices], 0.1, 5.0
             )
 
-        # Evolve field
-        field_updates, sample_indices = strips.evolve_field(t=float(cycle), sample_ratio=0.1)
+        # Apply vortex seeding (inject low-field regions)
+        if vortex_seed_strength > 0.3:
+            num_seeds = int(vortex_seed_strength * 100)
+            seed_indices = torch.randperm(strips.total_nodes, device=device)[:num_seeds]
+            strips.field[seed_indices] *= 0.1  # Create vortex cores
+
+        # Evolve field with RNN-controlled physics
+        field_updates, sample_indices = strips.evolve_field(
+            t=float(cycle),
+            sample_ratio=0.1,
+            damping=damping,
+            nonlinearity=nonlinearity
+        )
         strips.field[sample_indices] = field_updates
 
         # Track global parameters for exploration bonus
@@ -376,7 +411,11 @@ def train_multi_strip(args):
             'kappa': global_params[0].item(),
             'delta': global_params[1].item(),
             'coupling': global_params[2].item(),
-            'vortex_target': global_params[3].item()
+            'vortex_target': global_params[3].item(),
+            'damping': damping,
+            'nonlinearity': nonlinearity,
+            'amp_variance': amp_variance,
+            'vortex_seed_strength': vortex_seed_strength
         })
 
         # Print progress
@@ -386,8 +425,8 @@ def train_multi_strip(args):
 
             print(f"Cycle {cycle+1:4d}/{num_cycles} | "
                   f"Vortex: {reward_breakdown['vortex_density_mean']:.1%} +/- {reward_breakdown['vortex_density_std']:.1%} | "
-                  f"Reward: {reward:7.1f} (Exp: {reward_breakdown['exploration_bonus']:.1f}) | "
-                  f"k: {global_params[0].item():.2f} d: {global_params[1].item():.2f} | "
+                  f"Reward: {reward:7.1f} | "
+                  f"damp: {damping:.2f} seed: {vortex_seed_strength:.2f} | "
                   f"Time: {cycle_time:.3f}s | "
                   f"ETA: {eta:.0f}s")
 

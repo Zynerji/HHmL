@@ -452,29 +452,35 @@ class SparseTokamakMobiusStrips:
         mask = self.strip_indices == strip_idx
         return self.field[mask]
 
-    def evolve_field(self, t: float, sample_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor]:
+    def evolve_field(self, t: float, sample_ratio: float = 0.1,
+                     damping: float = 0.0, nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation (AUTO: sparse or dense mode)
 
         Args:
             t: Current time
             sample_ratio: Fraction of nodes to update (sparse mode only)
+            damping: Wave damping coefficient (0-0.2, RNN-controlled)
+            nonlinearity: Nonlinear term strength (-1 to 1, RNN-controlled)
 
         Returns:
             (field_updates, sample_indices): Updated field values and their indices
         """
         if self.use_sparse:
-            return self._sparse_wave_propagation(t, sample_ratio)
+            return self._sparse_wave_propagation(t, sample_ratio, damping, nonlinearity)
         else:
-            return self._dense_wave_propagation(t)
+            return self._dense_wave_propagation(t, damping, nonlinearity)
 
-    def _sparse_wave_propagation(self, t: float, sample_ratio: float = 0.1) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _sparse_wave_propagation(self, t: float, sample_ratio: float = 0.1,
+                                 damping: float = 0.0, nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation using sparse graph (FAST, for CPU/low-memory GPU)
 
         Args:
             t: Current time
             sample_ratio: Fraction of nodes to update (for speed)
+            damping: Wave damping coefficient (RNN-controlled)
+            nonlinearity: Nonlinear coupling strength (RNN-controlled)
 
         Returns:
             (field_updates, sample_indices)
@@ -505,16 +511,32 @@ class SparseTokamakMobiusStrips:
         field_real = torch.zeros(self.total_nodes, device=self.device)
         field_real.scatter_add_(0, src_idx, wave)
 
+        # Apply damping (exponential decay)
+        if damping > 0:
+            field_real = field_real * (1.0 - damping)
+
+        # Apply nonlinearity (self-interaction term)
+        if abs(nonlinearity) > 0.01:
+            current_field_mag = torch.abs(self.field[sample_indices])
+            nonlinear_term = nonlinearity * field_real[sample_indices] * current_field_mag.real
+            field_real[sample_indices] += nonlinear_term
+
         # Apply phases
         field_updates = field_real[sample_indices] * torch.exp(1j * self.phases[sample_indices])
 
         return field_updates, sample_indices
 
-    def _dense_wave_propagation(self, t: float) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _dense_wave_propagation(self, t: float, damping: float = 0.0,
+                                nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation using DENSE all-to-all (H200 mode, MAXIMUM ACCURACY)
 
         Updates ALL nodes every cycle for full accuracy.
+
+        Args:
+            t: Current time
+            damping: Wave damping coefficient (RNN-controlled)
+            nonlinearity: Nonlinear coupling strength (RNN-controlled)
 
         Returns:
             (field_updates, all_indices)
@@ -534,6 +556,16 @@ class SparseTokamakMobiusStrips:
 
         # Sum contributions from all sources for each target
         field_real = torch.sum(wave_matrix, dim=1).to(torch.float32)  # [N] - ensure float32
+
+        # Apply damping (exponential decay)
+        if damping > 0:
+            field_real = field_real * (1.0 - damping)
+
+        # Apply nonlinearity (self-interaction term)
+        if abs(nonlinearity) > 0.01:
+            current_field_mag = torch.abs(self.field)
+            nonlinear_term = nonlinearity * field_real * current_field_mag.real
+            field_real += nonlinear_term
 
         # Apply phases (use complex64 to match field dtype)
         phase_complex = torch.exp(1j * self.phases.to(torch.float32)).to(torch.complex64)
