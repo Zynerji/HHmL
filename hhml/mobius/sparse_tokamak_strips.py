@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Sparse Tokamak Multi-Strip Möbius Geometry
-===========================================
+Dense Tokamak Multi-Strip Möbius Geometry
+==========================================
 Implements nested Möbius strips with D-shaped cross-sections and splined paths.
 
-Uses sparse data structures for efficient scaling to 10-20 strips with 100K+ nodes each.
+UPDATED: Now uses DENSE mode exclusively - all nodes interact with all nodes.
 
 Key Features:
 - Miller parameterization for tokamak D-shaped cross-sections
 - Cubic B-spline winding paths for collision avoidance
-- Sparse neighbor graphs (only nearby nodes interact)
-- KD-tree spatial indexing for O(log N) neighbor queries
-- Memory-efficient: stores only essential interactions
+- DENSE all-to-all distance matrix for maximum accuracy
+- Full inter-node interactions (no sparsity approximation)
+- Suitable for GPU acceleration and small-to-medium scale
 
 Author: HHmL Framework
 Date: 2025-12-16
@@ -239,58 +239,19 @@ class SparseTokamakMobiusStrips:
 
     def _determine_sparse_mode(self, force_sparse: bool, force_dense: bool) -> bool:
         """
-        Auto-detect whether to use sparse or dense mode
+        Determine whether to use sparse or dense mode
 
-        Decision logic:
-        - H200 (140GB VRAM) → DENSE (can afford full interactions)
-        - High-end GPU (24-80GB) → DENSE if total_nodes < 200K, else SPARSE
-        - Mid-range GPU (8-24GB) → DENSE if total_nodes < 50K, else SPARSE
-        - CPU → SPARSE (always)
+        UPDATED: Always use DENSE mode for maximum accuracy
+        Sparse mode removed - all nodes interact with all nodes
 
         Returns:
-            True for sparse mode, False for dense mode
+            Always False (dense mode)
         """
         if force_sparse:
-            return True
-        if force_dense:
-            return False
+            print("  WARNING: force_sparse ignored - sparse mode disabled")
 
-        # Detect hardware tier
-        if self.device == 'cpu':
-            return True  # CPU always uses sparse
-
-        # GPU: check VRAM
-        try:
-            vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
-
-            # H200 detection (140GB VRAM)
-            if vram_gb > 100:
-                print(f"  Detected H200 ({vram_gb:.0f}GB VRAM) - using DENSE mode")
-                return False  # Dense on H200
-
-            # High-end GPU
-            if vram_gb >= 24:
-                threshold = 200000
-                use_sparse = self.total_nodes > threshold
-                mode = 'SPARSE' if use_sparse else 'DENSE'
-                print(f"  Detected high-end GPU ({vram_gb:.0f}GB) - using {mode} mode")
-                return use_sparse
-
-            # Mid-range GPU
-            if vram_gb >= 8:
-                threshold = 50000
-                use_sparse = self.total_nodes > threshold
-                mode = 'SPARSE' if use_sparse else 'DENSE'
-                print(f"  Detected mid-range GPU ({vram_gb:.0f}GB) - using {mode} mode")
-                return use_sparse
-
-            # Low-end GPU
-            print(f"  Detected low-end GPU ({vram_gb:.0f}GB) - using SPARSE mode")
-            return True
-
-        except:
-            # Fallback to sparse
-            return True
+        # Always use DENSE mode
+        return False
 
     def _generate_strips(self):
         """Generate all strip geometries with splined paths"""
@@ -552,10 +513,11 @@ class SparseTokamakMobiusStrips:
         )  # [N, N]
 
         # Sum contributions from all sources for each target
-        field_real = torch.sum(wave_matrix, dim=1)  # [N]
+        field_real = torch.sum(wave_matrix, dim=1).to(torch.float32)  # [N] - ensure float32
 
-        # Apply phases
-        field_updates = field_real * torch.exp(1j * self.phases)
+        # Apply phases (use complex64 to match field dtype)
+        phase_complex = torch.exp(1j * self.phases.to(torch.float32)).to(torch.complex64)
+        field_updates = (field_real * phase_complex).to(torch.complex64)
 
         # Return all indices (update everything)
         all_indices = torch.arange(self.total_nodes, device=self.device)
