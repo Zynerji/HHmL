@@ -659,3 +659,24 @@ Good luck with the Möbius journey! 🎭
 **Date Created**: 2025-12-16
 **Author**: Zynerji / Claude Code
 **License**: Same as iVHL (to be determined)
+
+
+## Workflow Expectations
+
+**Standard Development Workflow:**
+
+1. **Run Simulation** → Results saved to test_cases/[test_name]/results/
+2. **Generate Whitepaper** → Auto-created in test_cases/[test_name]/whitepapers/
+3. **Analyze Correlations** → Use RNN_PARAMETER_MAPPING.md guide
+4. **Iterate** → Resume training from checkpoints for sequential learning
+
+**File Organization:**
+- Scripts in `scripts/`
+- Test cases in `test_cases/[test_name]/` with subdirs: results/, whitepapers/
+- Legacy files in `archive/`
+- Core code in `hhml/`
+
+**Whitepaper Naming:**
+Format: `[test_name]_YYYYMMDD_HHMMSS.pdf`
+Example: `multi_strip_tokamak_20251216_213045.pdf`
+

@@ -1,0 +1,100 @@
+{
+  "hardware": {
+    "tier": "low_cpu",
+    "device": "cpu",
+    "gpu_name": null,
+    "vram_gb": 0,
+    "ram_gb": 10.672975872,
+    "cpu_cores": 8,
+    "is_h200": false
+  },
+  "benchmarks": [
+    {
+      "name": "geometry_generation",
+      "results": [
+        {
+          "num_strips": 1,
+          "nodes_per_strip": 1000,
+          "total_nodes": 1000,
+          "time_seconds": 0.4890310764312744,
+          "nodes_per_second": 2044.8598221968705,
+          "mode": "sparse",
+          "memory_mb": 1.52174
+        },
+        {
+          "num_strips": 2,
+          "nodes_per_strip": 1000,
+          "total_nodes": 2000,
+          "time_seconds": 1.4120559692382812,
+          "nodes_per_second": 1416.3744522668453,
+          "mode": "sparse",
+          "memory_mb": 3.90008
+        },
+        {
+          "num_strips": 3,
+          "nodes_per_strip": 1000,
+          "total_nodes": 3000,
+          "time_seconds": 2.1474111080169678,
+          "nodes_per_second": 1397.0310523215826,
+          "mode": "sparse",
+          "memory_mb": 6.03918
+        }
+      ]
+    },
+    {
+      "name": "wave_propagation",
+      "results": [
+        {
+          "num_strips": 2,
+          "nodes_per_strip": 1000,
+          "total_nodes": 2000,
+          "mode": "sparse",
+          "iterations": 10,
+          "avg_time_ms": 13.073563575744629,
+          "std_time_ms": 1.2968733113599433,
+          "avg_nodes_updated": 200.0,
+          "throughput_nodes_per_sec": 15298.047761901722,
+          "throughput_Mnodes_per_sec": 0.015298047761901723
+        }
+      ]
+    },
+    {
+      "name": "scaling_nodes",
+      "results": [
+        {
+          "num_strips": 2,
+          "nodes_per_strip": 1000,
+          "total_nodes": 2000,
+          "mode": "sparse",
+          "total_time": 1.3893840312957764,
+          "propagation_time_ms": 11.912822723388672,
+          "memory_mb": 3.90008,
+          "num_edges": 191804,
+          "sparsity_%": 95.20250125062532
+        },
+        {
+          "num_strips": 2,
+          "nodes_per_strip": 2000,
+          "total_nodes": 4000,
+          "mode": "sparse",
+          "total_time": 3.1039841175079346,
+          "propagation_time_ms": 33.55693817138672,
+          "memory_mb": 8.11374,
+          "num_edges": 399287,
+          "sparsity_%": 97.50383220805202
+        },
+        {
+          "num_strips": 2,
+          "nodes_per_strip": 1000,
+          "total_nodes": 2000,
+          "mode": "sparse",
+          "total_time": 1.3756518363952637,
+          "propagation_time_ms": 11.933088302612305,
+          "memory_mb": 3.90008,
+          "num_edges": 191804,
+          "sparsity_%": 95.20250125062532
+        }
+      ]
+    }
+  ]
+}

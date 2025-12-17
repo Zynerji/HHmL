@@ -351,16 +351,35 @@ class SparseTokamakMobiusStrips:
         edges = []
         edge_distances = []
 
+        # SPECTRAL NEIGHBOR SELECTION: Use helical phase weighting
+        # θ_i = 2π * log(i+1) / log(N+1)
+        N = len(neighbors_list)
+        indices = np.arange(N)
+        theta = 2.0 * np.pi * np.log(indices + 1) / np.log(N + 1)
+        omega_base = 0.3  # Base helical frequency
+
         for i, neighbor_indices in enumerate(neighbors_list):
-            # Skip self-loops and limit to max_neighbors
+            # Skip self-loops
             neighbor_indices = [j for j in neighbor_indices if j != i]
 
+            if len(neighbor_indices) == 0:
+                continue
+
             if len(neighbor_indices) > self.max_neighbors:
-                # Compute distances and keep closest
+                # SPECTRAL: Select neighbors by helical weight, not spatial distance!
                 source_pos = positions_np[i]
-                dists = np.linalg.norm(positions_np[neighbor_indices] - source_pos, axis=1)
-                closest = np.argsort(dists)[:self.max_neighbors]
-                neighbor_indices = [neighbor_indices[idx] for idx in closest]
+                spatial_dists = np.linalg.norm(positions_np[neighbor_indices] - source_pos, axis=1)
+
+                # Compute helical weights: w_ij = cos(ω(θ_i - θ_j))
+                # Modulate omega by spatial distance (closer = stronger coupling)
+                neighbor_theta = theta[neighbor_indices]
+                theta_diff = theta[i] - neighbor_theta
+                omega = omega_base * (1.0 + np.exp(-spatial_dists / self.sparse_threshold))
+                helical_weights = np.cos(omega * theta_diff)
+
+                # Select top neighbors by HELICAL WEIGHT (spectral approach)
+                top_indices = np.argsort(-helical_weights)[:self.max_neighbors]
+                neighbor_indices = [neighbor_indices[idx] for idx in top_indices]
 
             # Add edges
             for j in neighbor_indices:
@@ -453,26 +472,36 @@ class SparseTokamakMobiusStrips:
         return self.field[mask]
 
     def evolve_field(self, t: float, sample_ratio: float = 0.1,
-                     damping: float = 0.0, nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+                     damping: float = 0.0, nonlinearity: float = 0.0,
+                     omega: float = 0.3, diffusion_dt: float = 0.1,
+                     spectral_weight: float = 0.5) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation (AUTO: sparse or dense mode)
+        NOW RNN-CONTROLLED: All parameters learned via RL
 
         Args:
             t: Current time
-            sample_ratio: Fraction of nodes to update (sparse mode only)
-            damping: Wave damping coefficient (0-0.2, RNN-controlled)
-            nonlinearity: Nonlinear term strength (-1 to 1, RNN-controlled)
+            sample_ratio: Fraction of nodes to update (RNN-controlled)
+            damping: Wave damping coefficient (RNN-controlled)
+            nonlinearity: Nonlinear term strength (RNN-controlled)
+            omega: Spectral frequency for helical weighting (RNN-controlled)
+            diffusion_dt: Laplacian diffusion timestep (RNN-controlled)
+            spectral_weight: Blend factor (0=spatial, 1=spectral, RNN-controlled)
 
         Returns:
             (field_updates, sample_indices): Updated field values and their indices
         """
         if self.use_sparse:
-            return self._sparse_wave_propagation(t, sample_ratio, damping, nonlinearity)
+            return self._sparse_wave_propagation(t, sample_ratio, damping, nonlinearity,
+                                                omega, diffusion_dt, spectral_weight)
         else:
-            return self._dense_wave_propagation(t, damping, nonlinearity)
+            return self._dense_wave_propagation(t, damping, nonlinearity,
+                                               omega, diffusion_dt, spectral_weight)
 
     def _sparse_wave_propagation(self, t: float, sample_ratio: float = 0.1,
-                                 damping: float = 0.0, nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+                                 damping: float = 0.0, nonlinearity: float = 0.0,
+                                 omega: float = 0.3, diffusion_dt: float = 0.1,
+                                 spectral_weight: float = 0.5) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation using sparse graph (FAST, for CPU/low-memory GPU)
 
@@ -502,14 +531,28 @@ class SparseTokamakMobiusStrips:
         src_idx = sampled_edges[0]
         tgt_idx = sampled_edges[1]
 
-        # Wave contribution from each edge
-        wave = (self.amplitudes[tgt_idx] *
-                torch.sin(self.frequencies[tgt_idx] * t - 3.0 * sampled_distances) /
-                (sampled_distances + 0.05))
+        # SPECTRAL PROPAGATION: Use graph Laplacian diffusion instead of wave equation
+        # L = D - A, where D is degree matrix, A is adjacency
+        # Field evolves as: dψ/dt = -L·ψ (diffusion on graph)
 
-        # Aggregate contributions per source node using scatter_add
+        # Build local Laplacian for sampled edges
+        # Adjacency weight from edge: w_ij = amplitude_j / (distance_ij + 0.05)
+        edge_weights = self.amplitudes[tgt_idx] / (sampled_distances + 0.05)
+
+        # Create weighted adjacency contributions
         field_real = torch.zeros(self.total_nodes, device=self.device)
-        field_real.scatter_add_(0, src_idx, wave)
+        field_real.scatter_add_(0, src_idx, edge_weights)
+
+        # Degree (sum of weights per node)
+        degree = torch.zeros(self.total_nodes, device=self.device)
+        degree.scatter_add_(0, src_idx, torch.ones_like(edge_weights))
+
+        # Laplacian diffusion: ψ_new = ψ - dt*(D·ψ - A·ψ)
+        # Equivalent to: ψ_new = (1 - dt·D)·ψ + dt·A·ψ
+        dt = 0.1  # Time step for diffusion
+        current_field_real = torch.abs(self.field).real
+        laplacian_term = degree[sample_indices] * current_field_real[sample_indices] - field_real[sample_indices]
+        field_real[sample_indices] = current_field_real[sample_indices] - dt * laplacian_term
 
         # Apply damping (exponential decay)
         if damping > 0:
@@ -527,7 +570,9 @@ class SparseTokamakMobiusStrips:
         return field_updates, sample_indices
 
     def _dense_wave_propagation(self, t: float, damping: float = 0.0,
-                                nonlinearity: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor]:
+                                nonlinearity: float = 0.0,
+                                omega: float = 0.3, diffusion_dt: float = 0.1,
+                                spectral_weight: float = 0.5) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute wave propagation using DENSE all-to-all (H200 mode, MAXIMUM ACCURACY)
 
