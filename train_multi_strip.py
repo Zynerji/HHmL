@@ -176,7 +176,8 @@ class MultiStripRNNAgent(nn.Module):
         return actions, global_params, value, hidden
 
 
-def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips) -> float:
+def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips, global_params: torch.Tensor = None,
+                              param_history: list = None) -> float:
     """
     Compute reward for multi-strip system
 
@@ -185,6 +186,7 @@ def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips) -> float:
     - Uniform distribution across strips
     - Cross-strip coherence
     - Stability (low variance)
+    - Exploration bonus (parameter variation)
     """
     # Get field for each strip
     vortex_densities = []
@@ -207,29 +209,43 @@ def compute_multi_strip_reward(strips: SparseTokamakMobiusStrips) -> float:
     avg_vortex_density = np.mean(vortex_densities)
     std_vortex_density = np.std(vortex_densities)
 
-    # Target vortex density: 50-80%
+    # Target vortex density: 50-80% (ENHANCED: smoother reward curve)
     if 0.5 <= avg_vortex_density <= 0.8:
-        density_reward = 100 * avg_vortex_density
+        density_reward = 200 * avg_vortex_density  # Higher reward in target range
+    elif avg_vortex_density > 0.8:
+        # Soft penalty for exceeding target
+        density_reward = 160 - 50 * (avg_vortex_density - 0.8)
     else:
-        density_reward = 50 * avg_vortex_density  # Lower reward outside target
+        # Strong penalty for low vortex density (prevent collapse)
+        density_reward = 100 * avg_vortex_density - 150 * (0.5 - avg_vortex_density)**2
 
     # Uniformity reward (penalize large variance between strips)
     uniformity_reward = -50 * std_vortex_density
 
-    # Stability reward (penalize collapse)
-    if avg_vortex_density < 0.01:
-        stability_penalty = -100
+    # Stability reward (ENHANCED: gradual penalty for collapse)
+    if avg_vortex_density < 0.1:
+        stability_penalty = -200 * (0.1 - avg_vortex_density)  # Stronger penalty
     else:
         stability_penalty = 0
 
-    total_reward = density_reward + uniformity_reward + stability_penalty
+    # Exploration bonus (encourage parameter variation)
+    exploration_bonus = 0
+    if global_params is not None and param_history is not None and len(param_history) > 5:
+        # Calculate variance of recent kappa and delta values
+        recent_params = np.array(param_history[-10:])  # Last 10 cycles
+        kappa_std = np.std(recent_params[:, 0])
+        delta_std = np.std(recent_params[:, 1])
+        exploration_bonus = 10 * (kappa_std + delta_std)  # Reward exploration
+
+    total_reward = density_reward + uniformity_reward + stability_penalty + exploration_bonus
 
     return total_reward, {
         'vortex_density_mean': avg_vortex_density,
         'vortex_density_std': std_vortex_density,
         'density_reward': density_reward,
         'uniformity_reward': uniformity_reward,
-        'stability_penalty': stability_penalty
+        'stability_penalty': stability_penalty,
+        'exploration_bonus': exploration_bonus
     }
 
 
@@ -289,6 +305,9 @@ def train_multi_strip(args):
         'mode': 'sparse' if strips.use_sparse else 'dense'
     }
 
+    # Parameter history for exploration bonus
+    param_history = []
+
     print("\n" + "=" * 80)
     print("STARTING MULTI-STRIP TRAINING")
     print("=" * 80)
@@ -304,14 +323,19 @@ def train_multi_strip(args):
         # RNN forward
         actions, global_params, value, hidden = agent.forward(state)
 
-        # Apply actions to strips
+        # Add exploration noise to global parameters (anneal over time)
+        exploration_noise = 0.1 * (1.0 - cycle / num_cycles)  # Decay from 0.1 to 0
+        if exploration_noise > 0:
+            global_params = global_params + torch.randn_like(global_params) * exploration_noise
+
+        # Apply actions to strips (detach to avoid backprop through environment)
         for strip_idx in range(num_strips):
             # Get strip node indices
             strip_mask = strips.strip_indices == strip_idx
             strip_node_indices = torch.where(strip_mask)[0]
 
-            # Apply amplitude adjustments
-            action = actions[strip_idx]
+            # Apply amplitude adjustments (detach action)
+            action = actions[strip_idx].detach()
             strips.amplitudes[strip_node_indices] += action * 0.05
             strips.amplitudes[strip_node_indices] = torch.clamp(
                 strips.amplitudes[strip_node_indices], 0.5, 5.0
@@ -321,11 +345,22 @@ def train_multi_strip(args):
         field_updates, sample_indices = strips.evolve_field(t=float(cycle), sample_ratio=0.1)
         strips.field[sample_indices] = field_updates
 
-        # Compute reward
-        reward, reward_breakdown = compute_multi_strip_reward(strips)
+        # Track global parameters for exploration bonus
+        param_history.append([
+            global_params[0].item(),  # kappa
+            global_params[1].item()   # delta
+        ])
 
-        # RL update
-        loss = -value * reward  # Policy gradient
+        # Compute reward with exploration bonus
+        reward, reward_breakdown = compute_multi_strip_reward(
+            strips,
+            global_params=global_params,
+            param_history=param_history
+        )
+
+        # RL update (convert reward to tensor for gradient computation)
+        reward_tensor = torch.tensor(reward, dtype=torch.float32, device=device)
+        loss = -value * reward_tensor  # Policy gradient
         agent.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(agent.parameters(), 1.0)
@@ -350,9 +385,9 @@ def train_multi_strip(args):
             eta = (elapsed / (cycle + 1)) * (num_cycles - cycle - 1)
 
             print(f"Cycle {cycle+1:4d}/{num_cycles} | "
-                  f"Vortex: {reward_breakdown['vortex_density_mean']:.1%} ± {reward_breakdown['vortex_density_std']:.1%} | "
-                  f"Reward: {reward:7.1f} | "
-                  f"κ: {global_params[0].item():.2f} δ: {global_params[1].item():.2f} | "
+                  f"Vortex: {reward_breakdown['vortex_density_mean']:.1%} +/- {reward_breakdown['vortex_density_std']:.1%} | "
+                  f"Reward: {reward:7.1f} (Exp: {reward_breakdown['exploration_bonus']:.1f}) | "
+                  f"k: {global_params[0].item():.2f} d: {global_params[1].item():.2f} | "
                   f"Time: {cycle_time:.3f}s | "
                   f"ETA: {eta:.0f}s")
 
