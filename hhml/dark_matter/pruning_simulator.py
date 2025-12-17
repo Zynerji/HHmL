@@ -481,9 +481,11 @@ def visualize_pruning(result: PruningResult,
     ax2.grid(alpha=0.3, axis='y')
 
     # Add percentage labels
-    for i, (val, label) in enumerate([(total_kept, 'Physical'), (total_pruned, 'Dark')]):
-        pct = val / (total_kept + total_pruned) * 100
-        ax2.text(i, val, f'{pct:.1f}%', ha='center', va='bottom', fontweight='bold')
+    total_mass = total_kept + total_pruned
+    if total_mass > 0:
+        for i, (val, label) in enumerate([(total_kept, 'Physical'), (total_pruned, 'Dark')]):
+            pct = val / total_mass * 100
+            ax2.text(i, val, f'{pct:.1f}%', ha='center', va='bottom', fontweight='bold')
 
     # 3. Entropy conservation
     ax3 = fig.add_subplot(gs[0, 2])
