@@ -1794,6 +1794,136 @@ python your_script.py --auto-scale --scale-mode benchmark
 
 ---
 
+## 📝 INTERPRETING USER REQUESTS: "Create a Test for X"
+
+**IMPORTANT**: When the user asks to "create a test for [something]" or "use HHmL to test [concept]", they are requesting you to **build a complete test script** following the mandatory workflow.
+
+### What This Means
+
+**User says:**
+- "Create a test for quantum entanglement in Möbius strips"
+- "Use HHmL to test vortex stability under perturbations"
+- "Build a test for topological phase transitions"
+- "Test the holographic encoding hypothesis"
+
+**You should:**
+1. ✅ Create a new Python test script in `simulations/` or `examples/`
+2. ✅ Follow the **MANDATORY TEST WORKFLOW** template (PHASE 0, 1-N, N+1)
+3. ✅ Implement hardware auto-scaling (HardwareConfig)
+4. ✅ Implement the specific test logic for the concept
+5. ✅ Implement emergent verification (EmergentVerifier)
+6. ✅ Generate whitepapers for all results (EmergentWhitepaperGenerator)
+7. ✅ Save complete metadata (hardware, parameters, results, verification)
+
+### What "Mapping Function" Means
+
+The user is referring to the **mandatory workflow components** that map test results to verification and documentation:
+
+**Mapping Components:**
+- `HardwareConfig` → Auto-scales parameters to current hardware
+- `EmergentVerifier` → Maps field tensors to real-world data (LIGO/CMB/particles)
+- `EmergentWhitepaperGenerator` → Maps results to professional documentation
+- `summary.json` → Maps all metadata for reproducibility
+
+**These are NOT optional** - every test must use this mapping.
+
+### Example Interpretation
+
+**User Request:**
+> "Create a test for Klein bottle topology in HHmL"
+
+**Your Response Should Be:**
+
+"I'll create a complete test script for Klein bottle topology following the mandatory HHmL workflow. This will include:
+
+1. **Hardware auto-scaling** - Runs optimally on any hardware (CPU → H200)
+2. **Klein bottle implementation** - Double-twisted Möbius surface
+3. **Field evolution** - Test topological properties and vortex behavior
+4. **Emergent verification** - Compare spatial patterns to CMB data
+5. **Whitepaper generation** - Complete documentation of results
+6. **Summary metadata** - Hardware, parameters, verification scores
+
+The script will be: `simulations/topology/klein_bottle_test.py`"
+
+Then proceed to implement:
+- PHASE 0: Hardware detection and auto-scaling
+- PHASE 1: Klein bottle geometry generation
+- PHASE 2: Field evolution and dynamics
+- PHASE 3: Vortex stability measurement
+- PHASE 4: Topological invariant computation
+- PHASE 5: Emergent verification and whitepaper generation
+
+### Template Structure for New Tests
+
+```python
+#!/usr/bin/env python3
+"""
+[Concept] Test - Hardware Scalable
+===================================
+
+Tests [specific hypothesis or behavior] using HHmL framework.
+
+Phases:
+- PHASE 0: Hardware detection and auto-scaling
+- PHASE 1: [Setup/initialization]
+- PHASE 2: [Main test logic]
+- PHASE 3: [Measurement/analysis]
+- PHASE 4: [Validation/comparison]
+- PHASE 5: Emergent verification and whitepaper
+
+Target Hardware: Auto-scaled (CPU → H200)
+Expected Duration: [time range]
+
+Author: HHmL Project
+Date: YYYY-MM-DD
+"""
+
+# Follow MANDATORY TEST WORKFLOW template from CLAUDE.md
+# Include: HardwareConfig, EmergentVerifier, EmergentWhitepaperGenerator
+```
+
+### What NOT to Do
+
+**DON'T:**
+- ❌ Create a simple script without the mandatory workflow
+- ❌ Skip hardware auto-scaling
+- ❌ Skip emergent verification
+- ❌ Skip whitepaper generation
+- ❌ Create one-off throwaway test code
+
+**DO:**
+- ✅ Follow the complete mandatory workflow
+- ✅ Make it production-quality and reproducible
+- ✅ Include all phases (0, 1-N, N+1)
+- ✅ Document everything in whitepapers
+- ✅ Save to proper location (simulations/ or examples/)
+
+### Quick Checklist
+
+When user asks to "create a test for X":
+- [ ] Understand what hypothesis/behavior to test
+- [ ] Create new Python script in appropriate directory
+- [ ] Copy MANDATORY TEST WORKFLOW template
+- [ ] Implement PHASE 0 (hardware auto-scaling)
+- [ ] Implement PHASE 1-N (test-specific logic)
+- [ ] Implement PHASE N+1 (emergent verification + whitepaper)
+- [ ] Test with `--auto-scale --scale-mode benchmark`
+- [ ] Commit with descriptive message
+- [ ] Document in README.md if it's a new capability
+
+### Examples of Test Creation Requests
+
+| User Request | What to Build |
+|--------------|---------------|
+| "Test vortex annihilation dynamics" | Full test script with vortex tracking, annihilation measurement, emergent verification |
+| "Create a test for topological charge conservation" | Full test script with winding number computation, charge tracking, verification |
+| "Use HHmL to test AdS/CFT correspondence" | Full test script with bulk/boundary computation, holographic matching, verification |
+| "Build a test for quantum coherence decay" | Full test script with decoherence simulation, coherence measurement, verification |
+
+**All of these result in complete test scripts following the mandatory workflow.**
+
+---
+
 ## 🔬 EMERGENT PHENOMENA DETECTION (MANDATORY AFTER EVERY TEST)
 
 **Location**: `EMERGENTS.md` (root directory)
