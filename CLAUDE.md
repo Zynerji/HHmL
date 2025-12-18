@@ -1678,20 +1678,23 @@ def main():
         print(f"Is novel: {verification_results['is_novel']}")
         print()
 
-        # Generate whitepaper if novel
+        # Generate whitepaper for ALL test results (includes novelty assessment)
+        print("Generating comprehensive whitepaper...")
+
+        generator = EmergentWhitepaperGenerator()
+        whitepaper_path = generator.generate(
+            phenomenon_name="[Test Name] Results",
+            discovery_data=discovery_data,
+            verification_results=verification_results,
+            output_dir=str(run_dir / "whitepapers" / "EMERGENTS")
+        )
+
+        print(f"Whitepaper: {whitepaper_path}")
+
         if verification_results['is_novel']:
-            print("Phenomenon is NOVEL - generating whitepaper...")
-
-            generator = EmergentWhitepaperGenerator()
-            whitepaper_path = generator.generate(
-                phenomenon_name="[Discovery Name]",
-                discovery_data=discovery_data,
-                verification_results=verification_results,
-                output_dir=str(run_dir / "whitepapers" / "EMERGENTS")
-            )
-
-            print(f"Whitepaper: {whitepaper_path}")
-            print("Update EMERGENTS.md with this discovery")
+            print("✓ NOVEL - Update EMERGENTS.md with this discovery")
+        else:
+            print("ℹ Documented - Does not meet novelty threshold")
     else:
         print("Results do not meet threshold for verification")
 
@@ -1739,7 +1742,8 @@ if __name__ == '__main__':
 - ✅ Run verification if results meet threshold (typically score >= 0.5)
 - ✅ Prepare complete discovery data dictionary
 - ✅ Run `verifier.verify_phenomenon()` with field tensor
-- ✅ Generate whitepaper if `is_novel == True`
+- ✅ Generate whitepaper for ALL test results (includes novelty assessment)
+- ✅ Flag novel discoveries for EMERGENTS.md update
 - ✅ Save verification results to summary JSON
 
 ### Example Command Lines
@@ -1769,7 +1773,7 @@ See `simulations/dark_matter/full_dark_matter_test.py` for complete reference im
 
 1. **Hardware Portability**: Runs optimally on CPU, low GPU, high GPU, or H200
 2. **Reproducibility**: Hardware info tracked in all results
-3. **Automatic Documentation**: Whitepapers generated for novel discoveries
+3. **Automatic Documentation**: Whitepapers generated for ALL test results (includes novelty assessment)
 4. **Scientific Rigor**: Real-world verification strengthens novelty claims
 5. **Consistent Structure**: Easy to understand and maintain
 
@@ -1784,7 +1788,7 @@ python your_script.py --auto-scale --scale-mode benchmark
 # - Auto-scaled parameters
 # - Test results
 # - Emergent verification (if threshold met)
-# - Whitepaper (if novel)
+# - Whitepaper (ALWAYS generated, includes novelty assessment)
 # - summary.json with complete metadata
 ```
 

@@ -519,31 +519,30 @@ def main():
             print(f"  {rec}")
         print()
 
-        # Generate whitepaper if novel
+        # Generate whitepaper for ALL test results (includes novelty assessment)
+        print("Generating comprehensive whitepaper for test results...")
+        print()
+
+        generator = EmergentWhitepaperGenerator()
+
+        whitepaper_path = generator.generate(
+            phenomenon_name=f"Dark Matter as Multiverse Pruning Residue",
+            discovery_data=discovery_data,
+            verification_results=verification_results,
+            output_dir=str(run_dir / "whitepapers" / "EMERGENTS"),
+            compile_pdf=True
+        )
+
+        print(f"Whitepaper generated: {whitepaper_path}")
+        print()
+
         if verification_results['is_novel']:
-            print("Phenomenon is NOVEL - generating AAA-level whitepaper...")
-            print()
-
-            generator = EmergentWhitepaperGenerator()
-
-            whitepaper_path = generator.generate(
-                phenomenon_name=f"Dark Matter as Multiverse Pruning Residue",
-                discovery_data=discovery_data,
-                verification_results=verification_results,
-                output_dir=str(run_dir / "whitepapers" / "EMERGENTS"),
-                compile_pdf=True
-            )
-
-            print(f"Whitepaper generated: {whitepaper_path}")
-            print()
-            print("EMERGENTS.md should be updated manually with this discovery.")
-            print(f"See: {verification_results.get('output_file', 'verification results')}")
-            print()
-
+            print("✓ Results are NOVEL - update EMERGENTS.md with this discovery")
         else:
-            print("Phenomenon does not meet novelty threshold.")
-            print("No whitepaper generated.")
-            print()
+            print("ℹ Results documented but do not meet novelty threshold")
+
+        print(f"See: {verification_results.get('output_file', 'verification results')}")
+        print()
 
     else:
         print("Results do not meet threshold for emergent verification (score < 0.5)")
@@ -631,7 +630,7 @@ def main():
     print(f"  7. cosmological_validation_report.txt - Full report")
     print(f"  8. verification/emergent_verification.json - Emergent verification results")
     if cosmological_tests.overall_validity_score >= 0.5:
-        print(f"  9. whitepapers/EMERGENTS/*.pdf - AAA-level whitepaper (if novel)")
+        print(f"  9. whitepapers/EMERGENTS/*.pdf - Comprehensive whitepaper (ALL results)")
     print()
 
     # Save summary JSON
@@ -694,7 +693,7 @@ def main():
             'is_novel': verification_results['is_novel'],
             'phenomenon_type': verification_results['phenomenon_type'],
             'interpretation': verification_results['interpretation'],
-            'whitepaper_generated': verification_results['is_novel']
+            'whitepaper_generated': True  # Always generated for all results
         }
 
     summary_path = run_dir / "summary.json"
