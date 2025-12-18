@@ -1523,9 +1523,297 @@ Good luck with the Möbius journey! 🎭
 2. **Results Auto-Saved** → test_cases/[test_name]/results/
 3. **Generate Whitepaper** → Auto-created in test_cases/[test_name]/whitepapers/
 4. **Analyze Correlations** → Use RNN_PARAMETER_MAPPING.md guide
-5. **Iterate** → Resume training from checkpoints for sequential learning
+5. **🔬 Update EMERGENTS.md** → Document any novel phenomena discovered (CRITICAL STEP)
+6. **Iterate** → Resume training from checkpoints for sequential learning
 
 **IMPORTANT: Always add live dashboard to training scripts for real-time monitoring**
+
+---
+
+## 🔬 EMERGENT PHENOMENA DETECTION (MANDATORY AFTER EVERY TEST)
+
+**Location**: `EMERGENTS.md` (root directory)
+
+**PURPOSE**: HHmL has the same level of emergent detection capabilities as iVHL. EMERGENTS.md must be updated after EVERY test run to catalog novel discoveries.
+
+### After Every Test Run - MANDATORY STEPS
+
+**1. Analyze Results for Novel Behavior**
+
+Check for unusual patterns that indicate emergent phenomena:
+- Unexpected parameter convergence (sudden jumps, oscillations, phase transitions)
+- Correlation spikes (|r| > 0.7 between parameters and observables)
+- Scaling laws (power-law relationships, critical exponents)
+- Topological signatures (behavior unique to Möbius topology)
+- Quality thresholds (sudden changes in vortex stability/density)
+
+**2. Run Correlation Analysis**
+
+```python
+import json
+import numpy as np
+from scipy.stats import pearsonr
+
+# Load training results
+with open('test_cases/[test_name]/results/training_*.json') as f:
+    data = json.load(f)
+
+# Extract parameter histories
+param_history = data['param_history']
+metrics = data['metrics']
+
+# Check all 23 parameters against key observables
+observables = {
+    'vortex_density': metrics['vortex_densities'],
+    'vortex_quality': metrics.get('vortex_qualities', []),
+    'reward': metrics['rewards'],
+    'stability': metrics.get('stability', [])
+}
+
+# Compute correlations
+for param_name in param_history[0].keys():
+    param_values = [p[param_name] for p in param_history]
+
+    for obs_name, obs_values in observables.items():
+        if len(param_values) == len(obs_values):
+            r, p = pearsonr(param_values, obs_values)
+
+            # Flag strong correlations
+            if abs(r) > 0.7 and p < 0.05:
+                print(f"🔥 STRONG CORRELATION: {param_name} ↔ {obs_name}")
+                print(f"   r = {r:.3f}, p = {p:.3e}")
+```
+
+**3. Document in EMERGENTS.md**
+
+If you discover novel emergent behavior:
+
+a) **Add to "Discovered Emergent Phenomena" section** using the template:
+```markdown
+### [Sequential Number]. [Phenomenon Name]
+
+**Date Discovered**: YYYY-MM-DD
+**Training Run**: test_cases/[test_name]/results/training_YYYYMMDD_HHMMSS.json
+**Checkpoint**: [checkpoint_file.pt]
+**Cycles**: [discovery cycle or range]
+
+#### Description
+[Detailed description of what was observed]
+
+#### Topological Signature
+[How Möbius topology enables this - would it occur in torus/sphere?]
+
+#### Parameter Correlations
+| Parameter | Correlation (r) | p-value | Interpretation |
+|-----------|----------------|---------|----------------|
+| [param] | [r-value] | [p-value] | [strong/moderate/weak] |
+
+#### Reproducibility
+- **Random Seed**: [seed]
+- **Hardware**: [CPU/GPU model]
+- **PyTorch Version**: [version]
+- **Node Count**: [N nodes]
+
+#### Critical Parameters
+[Which parameters are essential for this phenomenon?]
+
+#### Validation Tests
+- [ ] Reproduced on different hardware
+- [ ] Reproduced with different random seeds
+- [ ] Scales to larger/smaller node counts
+- [ ] Absent in non-Möbius topologies (control)
+
+#### Scientific Significance
+[Why is this discovery important?]
+
+#### References
+- Whitepaper: [PDF filename]
+- Checkpoint: [.pt filename]
+```
+
+b) **Update Statistics Section**:
+```markdown
+## 📊 Emergent Phenomena Statistics
+
+**Total Discovered**: [N] confirmed, [M] under investigation
+**Latest Discovery**: YYYY-MM-DD ([Phenomenon Name])
+```
+
+c) **Update README.md** if the discovery represents a novel capability:
+```markdown
+### 🔬 [New Capability Name] *(Novel Discovery)*
+
+[Brief description of the emergent capability]
+
+**Discovery**: [Date] - [1-sentence summary]
+```
+
+**4. Generate Supplemental Analysis**
+
+Create visualizations and detailed analysis:
+```python
+# Plot parameter evolution
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+
+# Parameter trajectory
+axes[0,0].plot([p['param_name'] for p in param_history])
+axes[0,0].set_title('Parameter Evolution')
+
+# Correlation heatmap
+# ... correlation matrix visualization
+
+# Phase space plot
+axes[1,0].scatter([p['param1'] for p in param_history],
+                  [p['param2'] for p in param_history],
+                  c=metrics['vortex_densities'],
+                  cmap='viridis')
+axes[1,0].set_title('Parameter Phase Space')
+
+plt.savefig(f'test_cases/{test_name}/analysis/emergent_analysis.png')
+```
+
+**5. Update Changelog**
+
+If discovery is significant, add to `CHANGELOG.md`:
+```markdown
+## [Unreleased]
+
+### Discovered
+- **[Phenomenon Name]**: [Brief description] - [parameter correlations]
+```
+
+---
+
+### Emergent Detection Checklist (Run After EVERY Test)
+
+Use this checklist after completing a training run:
+
+- [ ] **Load training results** (JSON file with param_history and metrics)
+- [ ] **Run correlation analysis** (all 23 params vs observables)
+- [ ] **Check for strong correlations** (|r| > 0.7, p < 0.05)
+- [ ] **Identify unusual patterns** (spikes, phase transitions, convergence)
+- [ ] **Test topological specificity** (would this happen in torus/sphere?)
+- [ ] **Document in EMERGENTS.md** (use full template)
+- [ ] **Update statistics** (total count, latest discovery date)
+- [ ] **Generate visualizations** (parameter evolution, phase space, correlations)
+- [ ] **Update README.md** (if novel capability discovered)
+- [ ] **Update CHANGELOG.md** (if significant discovery)
+- [ ] **Create analysis notebook** (Jupyter notebook for deep dive - optional)
+- [ ] **Commit changes** with message: `docs: add emergent phenomenon - [name]`
+
+---
+
+### What Counts as "Novel Emergent"?
+
+A phenomenon qualifies as **novel emergent** if it meets ALL criteria:
+
+1. ✅ **Topological Origin**: Arises from Möbius topology specifically
+   - Test: Run same parameters on torus → phenomenon disappears/weakens
+
+2. ✅ **Parameter Dependence**: Controlled by RNN parameters
+   - Test: Fix parameter → phenomenon disappears
+   - Measure: Strong correlation |r| > 0.7, p < 0.05
+
+3. ✅ **Reproducibility**: Can be recreated
+   - Same seed → identical results (tolerance 1e-6)
+   - Different seeds → same effect statistically (p < 0.05, N ≥ 5)
+
+4. ✅ **Falsifiability**: Can be tested and potentially refuted
+   - Clear hypothesis about mechanism
+   - Clear prediction that could be wrong
+
+5. ✅ **Statistical Significance**: Not a random fluctuation
+   - p-value < 0.05 (Bonferroni corrected)
+   - Effect size Cohen's d > 0.5
+
+---
+
+### Examples of Emergent Phenomena to Watch For
+
+**Scaling Laws**:
+- Power-law relationships between parameters and observables
+- Critical exponents at phase transitions
+- Finite-size scaling behavior
+
+**Phase Transitions**:
+- Sudden jumps in vortex density at critical parameter values
+- Order parameter discontinuities
+- Diverging correlation lengths
+
+**Self-Organization Patterns**:
+- Spontaneous symmetry breaking
+- Pattern formation (stripes, hexagons, spirals)
+- Hierarchical structure emergence
+
+**Topological Effects**:
+- Winding number conservation/violation
+- Topological charge flux
+- Boundary condition effects unique to Möbius
+
+**Parameter Coupling**:
+- Synchronized parameter evolution (co-adaptive multiplets)
+- Constraint manifolds in parameter space
+- Master-slave parameter relationships
+
+**Quality Control Mechanisms**:
+- Active defect curation
+- Selective pruning strategies
+- Robustness to perturbations
+
+---
+
+### Automated Emergent Detection (Future Enhancement)
+
+**Goal**: Automatically flag potential emergent phenomena during training
+
+```python
+class EmergentDetector:
+    """Automatically detect potential emergent phenomena during training."""
+
+    def __init__(self, threshold_r=0.7, threshold_p=0.05):
+        self.threshold_r = threshold_r
+        self.threshold_p = threshold_p
+        self.flagged_phenomena = []
+
+    def check_correlations(self, param_history, metrics):
+        """Flag strong parameter-observable correlations."""
+        # ... correlation checking logic
+
+    def check_phase_transitions(self, observable_history):
+        """Detect sudden jumps indicating phase transitions."""
+        # ... change point detection
+
+    def check_scaling_laws(self, param_history, observable_history):
+        """Test for power-law relationships."""
+        # ... power law fitting
+
+    def generate_report(self):
+        """Generate automatic emergent phenomena report."""
+        # ... create draft EMERGENTS.md entry
+```
+
+**Usage** (integrate into training loop):
+```python
+detector = EmergentDetector()
+
+# During training
+for cycle in range(num_cycles):
+    # ... training code ...
+
+    # Check for emergents every 100 cycles
+    if cycle % 100 == 0:
+        detector.check_correlations(param_history, metrics)
+        detector.check_phase_transitions(metrics['vortex_densities'])
+
+# After training
+report = detector.generate_report()
+print(f"🔥 Flagged {len(detector.flagged_phenomena)} potential emergents")
+# Review and add validated ones to EMERGENTS.md
+```
+
+---
 
 **File Organization:**
 - Scripts in `scripts/`

@@ -42,16 +42,17 @@
 \Large A Glass-Box Framework for Emergent Topological Phenomena Discovery}
 
 \author{HHmL Research Collective\\
-\texttt{https://github.com/Zynerji/HHmL}}
+\texttt{https://github.com/Zynerji/HHmL}\\[0.3cm]
+\textbf{Contact:} \href{https://twitter.com/Conceptual1}{@Conceptual1}}
 
-\date{December 2025}
+\date{December 2025 - v0.1.0 (Production Release)}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-The Holo-Harmonic Möbius Lattice (HHmL) framework is a computational platform for investigating emergent phenomena in topologically non-trivial field configurations. By combining Möbius strip topology with recurrent neural network (RNN) control over 19 distinct system parameters, HHmL enables systematic exploration of correlations between topological field configurations and emergent vortex dynamics. This fully transparent ``glass-box'' architecture provides reproducible, peer-reviewable investigations into parameter space $\rightarrow$ emergent phenomena mappings. HHmL is designed as a mathematical and computational research tool, not a physical theory, enabling controlled exploration of topological field dynamics that may yield novel insights into complex system behavior.
+The Holo-Harmonic Möbius Lattice (HHmL) framework is a production-ready computational platform for investigating emergent phenomena in topologically non-trivial field configurations. By combining Möbius strip topology with recurrent neural network (RNN) control over \textbf{23 distinct system parameters} (including novel vortex annihilation controls), HHmL enables systematic exploration of correlations between topological field configurations and emergent vortex dynamics. This fully transparent ``glass-box'' architecture provides reproducible, peer-reviewable investigations into parameter space $\rightarrow$ emergent phenomena mappings. The framework features a flexible environment system for simulation-to-topology mapping, Docker-based deployment (CPU/CUDA/development images), and comprehensive emergent phenomena detection. HHmL is designed as a mathematical and computational research tool, not a physical theory, enabling controlled exploration of topological field dynamics that may yield novel insights into complex system behavior.
 \end{abstract}
 
 \tableofcontents
@@ -227,9 +228,9 @@ Unlike black-box neural networks, HHmL's RNN operates in a fully transparent man
     \item \textbf{No hidden state decay}: LSTM hidden states preserved across cycles for sequential learning
 \end{itemize}
 
-\subsection{19 Control Parameters}
+\subsection{23 Control Parameters}
 
-The RNN controls the following parameters (grouped by category):
+The RNN controls the following parameters (grouped by 7 categories):
 
 \paragraph{Geometry (4 parameters):}
 \begin{itemize}
@@ -273,6 +274,16 @@ The RNN controls the following parameters (grouped by category):
     \item $\tau_{\text{twist}} \in [0.5, 2.0]$: Twist rate
     \item $\lambda_{\text{couple}} \in [0, 1]$: Inter-strip coupling
 \end{itemize}
+
+\paragraph{Vortex Annihilation (4 parameters):} \textbf{NEW - Novel Capability}
+\begin{itemize}
+    \item $s_{\text{anti}} \in [0, 1]$: Antivortex injection strength
+    \item $r_{\text{annihil}} \in [0.1, 1.0]$: Annihilation spatial radius
+    \item $\theta_{\text{prune}} \in [0, 1]$: Quality pruning threshold
+    \item $\rho_{\text{preserve}} \in [0.3, 0.9]$: Minimum density preservation ratio
+\end{itemize}
+
+\textbf{Innovation}: These parameters enable RNN-controlled selective pruning of low-quality vortices via phase-inverted antivortex injection. The system learns to remove problematic topological structures while preserving high-quality vortices, achieving \textbf{100\% peak vortex density} through active quality control.
 
 \subsection{LSTM Architecture}
 
@@ -437,6 +448,188 @@ HHmL enables investigation of:
     \item \textbf{Transfer Learning}: Can parameters optimized at small scale transfer to large scale?
 \end{itemize}
 
+\section{Environment System}
+
+\subsection{Overview}
+
+HHmL features a flexible \textbf{environment system} that maps simulation parameters to HHmL-specific implementations, enabling standardized testing and reproducible benchmarking across different configurations.
+
+\subsection{Key Capabilities}
+
+\begin{itemize}
+    \item \textbf{YAML-Based Configuration}: Define complete simulation environments in human-readable YAML files
+    \item \textbf{Pre-defined Environments}: Includes \texttt{benchmark\_mobius} (4K nodes, 1000 cycles) and \texttt{test\_small} (1K nodes, 10 cycles)
+    \item \textbf{Automatic Hardware Detection}: Validates CUDA availability and VRAM requirements
+    \item \textbf{Reproducibility Controls}: Fixed seeds, deterministic execution, complete provenance tracking
+    \item \textbf{Pytest Integration}: Automatic fixtures for environment-based testing
+\end{itemize}
+
+\subsection{Environment Configuration}
+
+Each environment specifies:
+\begin{itemize}
+    \item \textbf{Topology}: Möbius strip parameters (radius, width, windings)
+    \item \textbf{Field Dynamics}: Wave equation coefficients, spectral modes
+    \item \textbf{RNN Control}: Which of the 23 parameters are active
+    \item \textbf{Simulation}: Node count, training cycles, batch size
+    \item \textbf{Hardware}: Device (CPU/CUDA), memory requirements
+    \item \textbf{Validation}: Target metrics (vortex density, quality thresholds)
+\end{itemize}
+
+\subsection{Using Environments}
+
+\begin{lstlisting}[language=python,caption={Load and run simulation from environment}]
+from hhml.utils.simulation_mapper import create_simulation_from_environment
+
+# Load pre-defined environment
+sim = create_simulation_from_environment('benchmark_mobius')
+
+# Access configured components
+topology = sim['topology']
+rnn_controller = sim['rnn_controller']
+training_config = sim['training_config']
+
+# Run training with environment settings
+# ... training loop using configured parameters
+\end{lstlisting}
+
+\subsection{Creating Custom Environments}
+
+\begin{lstlisting}[language=yaml,caption={Custom environment YAML}]
+metadata:
+  name: "custom_mobius"
+  description: "Custom Möbius configuration"
+  version: "1.0.0"
+
+topology:
+  type: "mobius"
+  mobius:
+    radius: 1.5
+    width: 0.3
+    windings: 100
+
+simulation:
+  nodes: 10000
+  cycles: 500
+  device: "cuda"
+
+rnn_control:
+  active_parameters: 23  # Full control
+  categories:
+    geometry: true
+    physics: true
+    annihilation: true
+
+validation:
+  targets:
+    vortex_density:
+      min: 0.80
+      target: 0.85
+\end{lstlisting}
+
+\subsection{Pytest Integration}
+
+\begin{lstlisting}[language=python,caption={Environment-based testing}]
+import pytest
+
+@pytest.fixture
+def test_env(env_manager):
+    """Small test environment for fast unit tests."""
+    return env_manager.get("test_small")
+
+def test_topology_creation(test_env):
+    """Test topology is created correctly from environment."""
+    from hhml.utils.simulation_mapper import SimulationMapper
+
+    mapper = SimulationMapper(test_env)
+    sim = mapper.create_complete_simulation()
+
+    assert sim['topology'] is not None
+    assert sim['environment'].simulation.nodes == 1000
+\end{lstlisting}
+
+For complete environment system documentation, see \texttt{docs/guides/ENVIRONMENT\_SYSTEM.md}.
+
+\section{Docker Deployment}
+
+\subsection{Container Images}
+
+HHmL provides three optimized Docker images:
+
+\begin{itemize}
+    \item \textbf{hhml:cpu-latest} - Lightweight CPU-only image (~2GB)
+    \item \textbf{hhml:cuda-latest} - CUDA-enabled for H100/H200 GPUs (~8GB)
+    \item \textbf{hhml:dev-latest} - Development with JupyterLab + TensorBoard (~10GB)
+\end{itemize}
+
+\subsection{Quick Start with Docker}
+
+\begin{lstlisting}[language=bash,caption={Build and run with Docker}]
+# Build all images
+cd docker && ./scripts/build.sh all
+
+# Run production training (CUDA)
+./scripts/run.sh production
+
+# Run development environment (JupyterLab at localhost:8888)
+./scripts/run.sh development
+
+# Generate whitepaper
+./scripts/run.sh whitepaper
+
+# Stop all containers
+./scripts/run.sh stop
+\end{lstlisting}
+
+\subsection{Docker Compose Orchestration}
+
+\begin{lstlisting}[language=yaml,caption={Production docker-compose.yml}]
+services:
+  hhml-training:
+    image: hhml:cuda-latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./data:/workspace/data
+
+  hhml-monitor:
+    image: hhml:cuda-latest
+    ports:
+      - "8000:8000"
+    command: python -m hhml.monitoring.live_dashboard
+\end{lstlisting}
+
+\section{Emergent Phenomena Detection}
+
+\subsection{Overview}
+
+HHmL includes comprehensive emergent phenomena detection capabilities, cataloging all novel discoveries in \texttt{EMERGENTS.md}. The system tracks:
+
+\begin{itemize}
+    \item \textbf{Scaling Laws}: Power-law relationships between parameters and observables
+    \item \textbf{Phase Transitions}: Critical points where emergent behavior changes
+    \item \textbf{Self-Organization}: Spontaneous pattern formation and symmetry breaking
+    \item \textbf{Topological Effects}: Phenomena unique to Möbius topology
+    \item \textbf{Parameter Coupling}: Synchronized multi-parameter evolution
+\end{itemize}
+
+\subsection{Discovered Phenomena}
+
+\paragraph{1. Optimal Winding Number Scaling Law}
+
+At 20M nodes, the RNN autonomously discovered $w \approx 109-110$ as the optimal Möbius winding number, representing a power-law scaling relationship between system size and topological organization efficiency. Correlation: $r = +0.94$ with vortex density ($p < 10^{-15}$).
+
+\paragraph{2. Vortex Quality-Based Self-Organization}
+
+With vortex annihilation control, the system achieved \textbf{100\% peak vortex density} at cycle 490 through active quality curation. The RNN learned to selectively prune low-quality vortices via antivortex injection, demonstrating emergent topological Darwinism.
+
+\paragraph{3. Co-Adaptive Parameter Triplet (w-L-n)}
+
+Three parameters exhibit synchronized co-evolution: winding density ($w$), QEC layers ($L$), and sampling ratio ($n$). Their product predicts vortex density with $r = +0.96$ ($p < 10^{-16}$), revealing a fundamental constraint manifold in the 23-dimensional parameter space.
+
+For complete emergent phenomena catalog, see \texttt{EMERGENTS.md}.
+
 \section{Usage and Workflow}
 
 \subsection{Quick Start}
@@ -534,31 +727,60 @@ HHmL results are peer-reviewable because:
 \section{Repository Structure}
 
 \begin{verbatim}
-HHmL/
-|-- hhml/                      # Core Python package
-|   |-- mobius/                # Mobius-specific modules
-|   |   |-- sparse_tokamak_strips.py
-|   |   |-- helical_vortex_optimizer.py
-|   |   +-- ...
-|   |-- resonance/             # Field dynamics
-|   |-- tensor_networks/       # MERA holography
-|   +-- utils/                 # Hardware config, validation
-|-- scripts/                   # Training scripts
-|   |-- train_multi_strip.py
-|   +-- ...
-|-- test_cases/                # Test configurations & results
-|   |-- multi_strip/
-|   |   |-- results/           # JSON simulation outputs
-|   |   +-- whitepapers/       # Generated PDFs
-|   |-- benchmarks/
-|   +-- ...
-|-- web_monitor/               # Whitepaper generation
-|   +-- whitepaper_generator.py
-|-- docs/                      # Documentation
-|-- archive/                   # Legacy files
-|-- RNN_PARAMETER_MAPPING.md   # Parameter correlation guide
-|-- CLAUDE.md                  # AI assistant context
-+-- README.tex                 # This file
+HHmL/                           # Production-ready structure (v0.1.0)
+├── src/
+│   └── hhml/                  # Main Python package
+│       ├── core/              # Core physics modules
+│       │   ├── mobius/       # Möbius topology & dynamics
+│       │   ├── resonance/    # Field dynamics
+│       │   ├── gft/          # Group Field Theory
+│       │   └── tensor_networks/  # MERA holography
+│       ├── ml/                # Machine learning
+│       │   ├── rl/           # Reinforcement learning
+│       │   └── training/     # Training loops
+│       ├── analysis/          # Analysis tools
+│       ├── monitoring/        # Live dashboards
+│       └── utils/             # Utilities
+│           ├── environment_manager.py
+│           ├── simulation_mapper.py
+│           └── ...
+├── tests/                     # Pytest test suite
+│   ├── unit/                 # Unit tests
+│   ├── integration/          # Integration tests
+│   └── benchmarks/           # Performance tests
+├── examples/                  # Example scripts
+│   ├── training/             # Training examples
+│   └── analysis/             # Analysis examples
+├── docker/                    # Docker infrastructure
+│   ├── Dockerfile.cpu        # CPU image
+│   ├── Dockerfile.cuda       # GPU image (H100/H200)
+│   ├── Dockerfile.dev        # Development + JupyterLab
+│   └── scripts/              # Build/run helpers
+├── docs/                      # Documentation
+│   ├── guides/               # User guides
+│   │   ├── ENVIRONMENT_SYSTEM.md
+│   │   ├── RNN_PARAMETER_MAPPING.md
+│   │   └── ...
+│   └── deployment/           # Deployment guides
+├── configs/                   # YAML configurations
+│   └── environments/         # Environment definitions
+│       ├── benchmark_mobius.yaml
+│       ├── test_small.yaml
+│       └── schema.yaml
+├── data/                      # Data directory (gitignored)
+│   ├── checkpoints/          # Model checkpoints
+│   ├── results/              # Training results
+│   └── outputs/              # Generated outputs
+├── tools/                     # Development tools
+│   └── whitepaper/           # Whitepaper generator
+├── pyproject.toml             # Modern Python packaging
+├── README.md                  # Markdown README
+├── README.tex                 # LaTeX README (this file)
+├── CHANGELOG.md               # Version history
+├── CONTRIBUTING.md            # Contribution guidelines
+├── EMERGENTS.md               # Emergent phenomena catalog
+├── CLAUDE.md                  # AI assistant context
+└── LICENSE                    # MIT License
 \end{verbatim}
 
 \section{Citation}
@@ -583,13 +805,37 @@ HHmL is a fork and evolution of the iVHL (Vibrational Helical Lattice) framework
 
 \section{License}
 
-[To be determined]
+HHmL is released under the MIT License. See \texttt{LICENSE} file for details.
+
+\begin{verbatim}
+MIT License
+
+Copyright (c) 2025 HHmL Research Collective
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction...
+\end{verbatim}
 
 \section{Contact}
 
-GitHub: \url{https://github.com/Zynerji/HHmL}
+\begin{itemize}
+    \item \textbf{Twitter/X}: \href{https://twitter.com/Conceptual1}{@Conceptual1}
+    \item \textbf{GitHub}: \url{https://github.com/Zynerji/HHmL}
+    \item \textbf{Issues}: \url{https://github.com/Zynerji/HHmL/issues}
+    \item \textbf{Documentation}: \url{https://github.com/Zynerji/HHmL/tree/main/docs}
+\end{itemize}
 
-Issues: \url{https://github.com/Zynerji/HHmL/issues}
+\section{Additional Resources}
+
+\begin{itemize}
+    \item \textbf{EMERGENTS.md}: Complete catalog of discovered emergent phenomena
+    \item \textbf{CLAUDE.md}: AI assistant workflows and development standards
+    \item \textbf{CHANGELOG.md}: Detailed version history and feature additions
+    \item \textbf{CONTRIBUTING.md}: Guidelines for contributing to HHmL
+    \item \textbf{docs/guides/}: Comprehensive user guides and tutorials
+    \item \textbf{docs/deployment/}: H200 deployment and scaling guides
+\end{itemize}
 
 \vspace{1cm}
 
