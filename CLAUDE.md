@@ -1,10 +1,704 @@
 # Hello Claude - HHmL Framework Context
 
-**Last Updated**: 2025-12-16
+**Last Updated**: 2025-12-17 (Production Refactoring Complete)
 **Project**: HHmL (Holo-Harmonic Möbius Lattice) Framework
-**Repository**: https://github.com/Zynerji/HHmL (to be created)
+**Repository**: https://github.com/Zynerji/HHmL
 **Parent Project**: iVHL (Vibrational Helical Lattice)
-**Status**: Development - Möbius Topology Focus
+**Status**: Production-Ready - v0.1.0
+**Contact**: [@Conceptual1](https://twitter.com/Conceptual1)
+
+---
+
+## 🏗️ PRODUCTION STRUCTURE (Dec 17, 2025)
+
+**CRITICAL: This repository follows a production-ready structure. All new files MUST follow this organization.**
+
+### Directory Structure
+
+```
+HHmL/
+├── .github/
+│   └── workflows/              # CI/CD pipelines (GitHub Actions)
+├── src/
+│   └── hhml/                   # Main Python package (ALL code here)
+│       ├── core/               # Core physics modules
+│       │   ├── mobius/        # Möbius strip topology & dynamics
+│       │   ├── resonance/     # Holographic boundary resonance
+│       │   ├── gft/           # Group Field Theory
+│       │   └── tensor_networks/ # MERA holography, RT formula
+│       ├── ml/                 # Machine learning components
+│       │   ├── rl/            # Reinforcement learning (TD3, SAC)
+│       │   └── training/      # Training loops & orchestration
+│       ├── analysis/           # Analysis & visualization
+│       │   └── dark_matter/   # Pruning theory & multiverse
+│       ├── monitoring/         # Web monitoring & dashboards
+│       │   ├── live_dashboard.py
+│       │   ├── streaming_server.py
+│       │   └── rendering/     # GPU rendering
+│       └── utils/              # Shared utilities
+│           ├── hardware_config.py
+│           ├── checkpoint_manager.py
+│           └── startup_validator.py
+├── tests/                      # All tests (pytest)
+│   ├── unit/                  # Fast, isolated unit tests
+│   ├── integration/           # Multi-component integration tests
+│   └── benchmarks/            # Performance benchmarks
+├── examples/                   # Example usage scripts
+│   ├── training/              # Training examples
+│   │   ├── train_mobius_basic.py
+│   │   ├── train_multi_strip.py
+│   │   └── train_quality_guided.py
+│   └── analysis/              # Analysis examples
+├── docker/                     # Complete Docker infrastructure
+│   ├── Dockerfile.cpu         # Lightweight CPU image
+│   ├── Dockerfile.cuda        # H100/H200 GPU image
+│   ├── Dockerfile.dev         # Development + JupyterLab
+│   ├── docker-compose.yml     # Production orchestration
+│   ├── docker-compose.dev.yml # Development environment
+│   └── scripts/               # Helper scripts
+│       ├── build.sh           # Build all images
+│       └── run.sh             # Run containers
+├── docs/                       # Documentation
+│   ├── guides/                # User guides & tutorials
+│   │   ├── RNN_PARAMETER_MAPPING.md
+│   │   ├── MULTI_STRIP_TOPOLOGY.md
+│   │   └── H200_DEPLOYMENT.md
+│   ├── deployment/            # Deployment guides
+│   └── theory/                # Mathematical theory
+├── configs/                    # Configuration files (YAML)
+│   └── multiscale_config.yaml
+├── tools/                      # Development tools
+│   ├── whitepaper/            # Whitepaper generator
+│   └── benchmarking/          # Performance tools
+├── data/                       # Data directory (GITIGNORED)
+│   ├── checkpoints/           # Model checkpoints (.pt, .pth)
+│   ├── results/               # Training results (JSON)
+│   └── outputs/               # Generated outputs
+│       └── whitepapers/       # Generated PDFs
+├── archive/                    # Legacy code (NEVER ADD TO)
+├── pyproject.toml              # Modern Python packaging
+├── setup.py                    # Setuptools config
+├── README.md                   # Professional README
+├── LICENSE                     # MIT License
+├── CONTRIBUTING.md             # Contribution guidelines
+├── CHANGELOG.md                # Version history
+├── MIGRATION_GUIDE.md          # Migration instructions
+├── REFACTORING_SUMMARY.md      # Complete refactoring summary
+├── CLAUDE.md                   # This file - AI context
+├── .gitignore                  # Comprehensive ignores
+├── .dockerignore               # Docker-specific ignores
+└── .editorconfig               # Editor configuration
+```
+
+---
+
+## 📋 HOW TO MAINTAIN THIS STRUCTURE
+
+### Golden Rules
+
+**1. NEVER put Python code in root directory**
+   - ✅ `src/hhml/core/mobius/new_module.py`
+   - ❌ `new_script.py` (in root)
+
+**2. NEVER commit data/results/checkpoints**
+   - ✅ `data/` is gitignored - mount as Docker volume
+   - ❌ Committing .pt, .pth, .json results
+
+**3. NEVER put loose documentation in root**
+   - ✅ `docs/guides/new_guide.md`
+   - ❌ `NEW_FEATURE_DOC.md` (in root)
+
+**4. ALWAYS use proper import paths**
+   - ✅ `from hhml.core.mobius.mobius_training import MobiusStrip`
+   - ❌ `from hhml.mobius.mobius_training import MobiusStrip` (old)
+
+**5. ALWAYS add __init__.py to new packages**
+   - When creating `src/hhml/new_module/`, add `__init__.py`
+
+---
+
+## 📂 WHERE TO PUT NEW FILES
+
+### New Python Module
+
+**Location**: `src/hhml/{category}/{module_name}/`
+
+**Categories**:
+- `core/` - Physics, topology, field dynamics
+- `ml/` - Machine learning, RL, training
+- `analysis/` - Data analysis, visualization
+- `monitoring/` - Dashboards, web interfaces
+- `utils/` - Shared utilities
+
+**Steps**:
+```bash
+# 1. Create module directory
+mkdir -p src/hhml/core/new_topology/
+
+# 2. Add __init__.py
+touch src/hhml/core/new_topology/__init__.py
+
+# 3. Create module files
+touch src/hhml/core/new_topology/dynamics.py
+touch src/hhml/core/new_topology/geometry.py
+
+# 4. Import in parent __init__.py (optional)
+# Edit src/hhml/core/__init__.py to expose module
+```
+
+### New Training Script
+
+**Location**: `examples/training/`
+
+```bash
+# Create training script
+touch examples/training/train_new_topology.py
+chmod +x examples/training/train_new_topology.py
+```
+
+### New Test
+
+**Location**: `tests/{unit|integration|benchmarks}/`
+
+```bash
+# Unit test
+touch tests/unit/test_new_topology.py
+
+# Integration test
+touch tests/integration/test_new_topology_training.py
+
+# Benchmark
+touch tests/benchmarks/benchmark_new_topology.py
+```
+
+### New Documentation
+
+**Location**: `docs/{guides|deployment|theory}/`
+
+```bash
+# User guide
+touch docs/guides/NEW_TOPOLOGY_GUIDE.md
+
+# Deployment guide
+touch docs/deployment/NEW_TOPOLOGY_DEPLOYMENT.md
+
+# Theory documentation
+touch docs/theory/NEW_TOPOLOGY_MATH.md
+```
+
+### New Configuration
+
+**Location**: `configs/`
+
+```bash
+# YAML config
+touch configs/new_topology_config.yaml
+```
+
+### New Tool
+
+**Location**: `tools/{category}/`
+
+```bash
+# Whitepaper tool
+touch tools/whitepaper/new_analyzer.py
+
+# Benchmarking tool
+touch tools/benchmarking/new_benchmark.py
+```
+
+---
+
+## 🔄 WORKFLOW FOR ADDING FEATURES
+
+### Step-by-Step Process
+
+**1. Plan the feature**
+   - Determine category (core/ml/analysis/monitoring)
+   - Check if fits existing module or needs new one
+
+**2. Create module structure**
+   ```bash
+   mkdir -p src/hhml/{category}/{module_name}/
+   touch src/hhml/{category}/{module_name}/__init__.py
+   ```
+
+**3. Write code**
+   - Follow Black formatting (100 char lines)
+   - Add docstrings (Google style)
+   - Add type hints where helpful
+
+**4. Write tests**
+   ```bash
+   touch tests/unit/test_{module_name}.py
+   pytest tests/unit/test_{module_name}.py
+   ```
+
+**5. Write documentation**
+   ```bash
+   touch docs/guides/{FEATURE_NAME}.md
+   ```
+
+**6. Update CHANGELOG.md**
+   ```markdown
+   ## [Unreleased]
+
+   ### Added
+   - New topology module with XYZ capabilities
+   ```
+
+**7. Create example**
+   ```bash
+   touch examples/training/train_{feature_name}.py
+   ```
+
+**8. Commit with conventional commits**
+   ```bash
+   git add .
+   git commit -m "feat: add new topology module with XYZ capabilities
+
+   - Implements ABC dynamics
+   - Adds DEF visualization
+   - Includes unit tests and documentation
+
+   Closes #123"
+   ```
+
+---
+
+## 🚫 ANTI-PATTERNS (DON'T DO THESE)
+
+### ❌ Bad: Loose Files in Root
+```
+HHmL/
+├── my_experiment.py          # NO! Use examples/
+├── test_new_feature.py       # NO! Use tests/
+├── NEW_RESULTS.md            # NO! Use docs/guides/
+├── checkpoint.pt             # NO! Use data/checkpoints/
+└── results.json              # NO! Use data/results/
+```
+
+### ❌ Bad: Flat Package Structure
+```python
+# NO! Don't add to src/hhml/ directly
+src/hhml/my_new_module.py
+
+# YES! Use proper categorization
+src/hhml/core/my_topology/dynamics.py
+```
+
+### ❌ Bad: Committing Generated Files
+```bash
+# NO! Don't commit these
+git add data/results/*.json
+git add data/checkpoints/*.pt
+git add data/outputs/whitepapers/*.pdf
+
+# These are gitignored for a reason!
+```
+
+### ❌ Bad: Mixed Concerns
+```python
+# NO! Don't mix physics and ML in same file
+src/hhml/core/mobius/mobius_with_training.py
+
+# YES! Separate concerns
+src/hhml/core/mobius/dynamics.py      # Physics only
+src/hhml/ml/training/mobius_trainer.py # Training only
+```
+
+---
+
+## ✅ GOOD PATTERNS (DO THESE)
+
+### ✅ Good: Modular Organization
+```
+src/hhml/core/klein_bottle/
+├── __init__.py
+├── topology.py       # Topology definition
+├── dynamics.py       # Field dynamics
+├── geometry.py       # Geometric calculations
+└── visualization.py  # Plotting utilities
+```
+
+### ✅ Good: Comprehensive Testing
+```
+tests/
+├── unit/
+│   └── test_klein_bottle.py           # Fast unit tests
+├── integration/
+│   └── test_klein_bottle_training.py  # Full workflow
+└── benchmarks/
+    └── benchmark_klein_bottle.py      # Performance tests
+```
+
+### ✅ Good: Complete Documentation
+```
+docs/
+├── guides/
+│   └── KLEIN_BOTTLE_GUIDE.md         # User guide
+├── deployment/
+│   └── KLEIN_BOTTLE_H200.md          # Deployment guide
+└── theory/
+    └── KLEIN_BOTTLE_MATH.md          # Mathematical theory
+```
+
+### ✅ Good: Organized Examples
+```
+examples/
+├── training/
+│   ├── train_klein_bottle_basic.py   # Simple example
+│   └── train_klein_bottle_advanced.py # Complex example
+└── analysis/
+    └── analyze_klein_bottle_results.py
+```
+
+---
+
+## 🐳 DOCKER WORKFLOW
+
+### Building Images
+
+```bash
+# Build all images
+cd docker && ./scripts/build.sh all
+
+# Build specific image
+./scripts/build.sh cpu      # CPU-only
+./scripts/build.sh cuda     # GPU support
+./scripts/build.sh dev      # Development
+```
+
+### Running Containers
+
+```bash
+# Production (training + monitoring)
+./scripts/run.sh production
+
+# Development (JupyterLab)
+./scripts/run.sh development
+
+# Whitepaper generation
+./scripts/run.sh whitepaper
+
+# Stop all
+./scripts/run.sh stop
+
+# View logs
+./scripts/run.sh logs
+```
+
+### Adding to Docker Images
+
+**To add Python dependencies:**
+
+1. Update `requirements.txt`:
+   ```txt
+   torch>=2.0.0
+   numpy>=1.24.0
+   new-package>=1.0.0  # Add here
+   ```
+
+2. Rebuild images:
+   ```bash
+   cd docker && ./scripts/build.sh all
+   ```
+
+**To add system dependencies:**
+
+1. Edit `docker/Dockerfile.cuda` (or .cpu/.dev):
+   ```dockerfile
+   RUN apt-get update && apt-get install -y \
+       python3.12 \
+       git \
+       new-system-package \  # Add here
+       && rm -rf /var/lib/apt/lists/*
+   ```
+
+2. Rebuild:
+   ```bash
+   ./scripts/build.sh cuda
+   ```
+
+---
+
+## 📦 PACKAGING WORKFLOW
+
+### Updating Version
+
+**Edit `pyproject.toml`:**
+```toml
+[project]
+name = "hhml"
+version = "0.2.0"  # Increment here
+```
+
+### Adding Dependencies
+
+**Edit `pyproject.toml`:**
+```toml
+dependencies = [
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+    "new-package>=1.0.0",  # Add here
+]
+```
+
+### Installing Package
+
+```bash
+# Development install (editable)
+pip install -e .
+
+# With dev tools
+pip install -e ".[dev]"
+
+# With all extras
+pip install -e ".[dev,viz,docs]"
+```
+
+---
+
+## 📝 DOCUMENTATION STANDARDS
+
+### Docstring Format (Google Style)
+
+```python
+def train_mobius_topology(
+    nodes: int,
+    cycles: int,
+    device: str = "cuda"
+) -> dict:
+    """
+    Train Möbius topology with RNN control.
+
+    Args:
+        nodes: Number of nodes in topology (2K-20M)
+        cycles: Training cycles to run
+        device: Device to use ('cuda' or 'cpu')
+
+    Returns:
+        Dictionary containing:
+            - 'final_density': Final vortex density (float)
+            - 'reward': Final reward value (float)
+            - 'checkpoint_path': Path to saved checkpoint (str)
+
+    Raises:
+        ValueError: If nodes < 1000 or cycles < 1
+        RuntimeError: If CUDA requested but not available
+
+    Example:
+        >>> results = train_mobius_topology(
+        ...     nodes=4000,
+        ...     cycles=100,
+        ...     device="cuda"
+        ... )
+        >>> print(f"Final density: {results['final_density']:.2%}")
+        Final density: 82.00%
+
+    Note:
+        Requires GPU with 16GB+ VRAM for nodes > 100K.
+    """
+```
+
+### README Structure for Modules
+
+```markdown
+# Module Name
+
+Brief description (1-2 sentences).
+
+## Features
+
+- Feature 1
+- Feature 2
+- Feature 3
+
+## Usage
+
+\`\`\`python
+from hhml.core.module_name import Function
+
+result = Function(param1, param2)
+\`\`\`
+
+## API Reference
+
+### `Function`
+
+Description of function.
+
+**Parameters:**
+- `param1` (type): Description
+- `param2` (type): Description
+
+**Returns:**
+- type: Description
+
+## Examples
+
+See `examples/training/train_module_name.py`
+
+## Tests
+
+Run tests:
+\`\`\`bash
+pytest tests/unit/test_module_name.py
+\`\`\`
+```
+
+---
+
+## 🔍 CODE QUALITY CHECKS
+
+### Before Committing
+
+```bash
+# Format code (automatic)
+black src/ tests/ examples/
+
+# Check linting
+flake8 src/ tests/ examples/
+
+# Type checking
+mypy src/
+
+# Run tests
+pytest tests/
+
+# All checks at once
+black src/ tests/ examples/ && \
+flake8 src/ tests/ examples/ && \
+mypy src/ && \
+pytest tests/
+```
+
+### Pre-commit Hooks (Recommended)
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Now hooks run automatically on git commit
+```
+
+---
+
+## 📊 MONITORING & LOGGING
+
+### Where Logs Go
+
+- **Training logs**: `data/results/{experiment_name}/training.log`
+- **System logs**: `data/outputs/logs/`
+- **Docker logs**: `docker logs hhml-training` or `docker-compose logs`
+
+### Live Monitoring
+
+```python
+from hhml.monitoring.live_dashboard import TrainingDashboard
+
+# Start dashboard
+dashboard = TrainingDashboard(port=8000)
+dashboard.start()
+
+# Update during training
+for cycle in range(num_cycles):
+    # ... training code ...
+
+    dashboard.update({
+        'cycle': cycle,
+        'density': vortex_density,
+        'quality': vortex_quality,
+        'reward': reward,
+    })
+
+# Access at http://localhost:8000
+```
+
+---
+
+## 🚀 DEPLOYMENT CHECKLIST
+
+### Before Deploying to H200
+
+- [ ] Code formatted with Black
+- [ ] All tests passing
+- [ ] Documentation updated
+- [ ] CHANGELOG.md updated
+- [ ] Docker images built
+- [ ] Example scripts tested
+- [ ] Version bumped in `pyproject.toml`
+- [ ] Committed with conventional commit message
+- [ ] Pushed to GitHub
+
+### Deployment Steps
+
+```bash
+# 1. Build Docker images
+cd docker && ./scripts/build.sh cuda
+
+# 2. Push to Docker Hub (optional)
+docker tag hhml:cuda-latest hhml/hhml:cuda-0.1.0
+docker push hhml/hhml:cuda-0.1.0
+
+# 3. SSH to H200
+ssh ivhl@89.169.111.28
+
+# 4. Pull latest code
+cd HHmL && git pull
+
+# 5. Rebuild containers
+cd docker && ./scripts/build.sh cuda
+
+# 6. Run
+./scripts/run.sh production
+```
+
+---
+
+## 🆘 TROUBLESHOOTING STRUCTURE ISSUES
+
+### "ModuleNotFoundError: No module named 'hhml'"
+
+```bash
+# Solution: Reinstall package
+pip uninstall hhml
+pip install -e .
+```
+
+### "Import path not found"
+
+```python
+# Old (WRONG)
+from hhml.mobius.mobius_training import MobiusStrip
+
+# New (CORRECT)
+from hhml.core.mobius.mobius_training import MobiusStrip
+```
+
+### "File not in expected location"
+
+**Check the structure guide above.** All files have specific locations:
+- Python code → `src/hhml/{category}/`
+- Tests → `tests/{unit|integration|benchmarks}/`
+- Examples → `examples/{training|analysis}/`
+- Docs → `docs/{guides|deployment|theory}/`
+- Config → `configs/`
+- Data → `data/` (gitignored!)
+
+---
+
+## 📞 HELP & SUPPORT
+
+**Questions about structure?**
+1. Read this section thoroughly
+2. Check `REFACTORING_SUMMARY.md`
+3. Review `MIGRATION_GUIDE.md`
+4. Open GitHub issue with `structure` label
+5. Contact [@Conceptual1](https://twitter.com/Conceptual1)
 
 ---
 
