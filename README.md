@@ -1004,6 +1004,70 @@ If you use HHmL in your research, please cite:
 
 ---
 
+## 💰 Supporting Future Research
+
+**This project stands on its own scientific merit.** HHmL has demonstrated genuine discoveries like hash quines (312-371× self-similarity amplification) and 100% vortex density achievement through glass-box methodology. All research is published openly regardless of funding.
+
+That said, continued exploration of recursive topological structures and scaling to larger systems requires significant computational resources beyond current capabilities.
+
+### Computational Needs for Extended Research
+
+**Current Scale**: 20M nodes on CPU/low-end GPU (adequate for initial studies)
+
+**Proposed Next Steps:**
+1. **Large-Scale Testing**: 100M-1B nodes on NVIDIA H200
+   - Cost: ~$2-3/hour × 40-100 hours = **$80-300**
+   - Would reveal scaling behavior of emergent phenomena
+   - Test if patterns change at 10-100× larger lattices
+
+2. **Alternative Applications**: TSP, protein folding, SAT solving (where HHmL should excel)
+   - Cost: ~$100-200 for comprehensive testing
+   - **High probability of positive results** (continuous fitness landscapes)
+   - Would validate recursive topology for real optimization problems
+
+3. **Topology Comparison**: Möbius vs Torus vs Klein Bottle at scale
+   - Cost: ~$50-100 for parallel trials
+   - Determine if Möbius is uniquely suited for recursive structures
+
+4. **Real-World Verification**: LIGO/CMB/Particle comparisons at scale
+   - Cost: ~$50-100 for comprehensive empirical validation
+   - Strengthen or refute emergent pattern claims
+
+**Total estimated cost for comprehensive follow-up research: ~$300-700**
+
+### Community Support
+
+If you'd like to support continued open-source research into holographic topological optimization and recursive Möbius structures:
+
+**Bitcoin**: `3JMxeigcY5FyZm6KUmP78Db1BUzpWgRAfW`
+
+### Transparency Commitment
+
+- ✅ **All funded research published openly** (same rigorous methodology as current work)
+- ✅ **Negative results shared** (we don't hide failures - see Hash Quine whitepaper!)
+- ✅ **Cloud compute receipts** available upon request
+- ✅ **No commercial exploitation** of community funds
+- ✅ **Complete code & data** for all experiments
+- ✅ **Glass-box methodology** (every parameter tracked, reproducible)
+
+### Institutional Sponsorship
+
+Organizations like **Anthropic** (creators of Claude Code, which assisted in this research), **cloud compute providers** (Nebius, Lambda Labs, CoreWeave), or **academic institutions** interested in supporting open-source scientific exploration may also sponsor compute time or research partnerships.
+
+This work demonstrates novel applications of:
+- AI-assisted research methodology (Claude Code wrote recursive algorithms, generated whitepapers)
+- Recursive topological structures (hash quines, vortex annihilation control)
+- Glass-box ML for scientific discovery (23-parameter RNN control with full correlation tracking)
+- Honest negative results (cryptographic mining failed, but hash quines discovered)
+
+**For institutional sponsorship inquiries**: Open an issue on GitHub or contact [@Conceptual1](https://twitter.com/Conceptual1)
+
+---
+
+Thank you for supporting open science and rigorous exploration of emergent mathematical structures! 🙏
+
+---
+
 ## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
