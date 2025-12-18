@@ -1807,25 +1807,94 @@ python your_script.py --auto-scale --scale-mode benchmark
 - "Test the holographic encoding hypothesis"
 
 **You should:**
-1. ✅ Create a new Python test script in `simulations/` or `examples/`
-2. ✅ Follow the **MANDATORY TEST WORKFLOW** template (PHASE 0, 1-N, N+1)
-3. ✅ Implement hardware auto-scaling (HardwareConfig)
-4. ✅ Implement the specific test logic for the concept
-5. ✅ Implement emergent verification (EmergentVerifier)
-6. ✅ Generate whitepapers for all results (EmergentWhitepaperGenerator)
-7. ✅ Save complete metadata (hardware, parameters, results, verification)
+1. ✅ **Use the mapping function** - Import concept mapping from `hhml.utils.hhml_parameter_mapping`
+2. ✅ Create a new Python test script in `simulations/` or `examples/`
+3. ✅ Follow the **MANDATORY TEST WORKFLOW** template (PHASE 0, 1-N, N+1)
+4. ✅ Implement hardware auto-scaling (HardwareConfig)
+5. ✅ Implement the specific test logic for the concept
+6. ✅ Implement emergent verification (EmergentVerifier)
+7. ✅ Generate whitepapers for all results (EmergentWhitepaperGenerator)
+8. ✅ Save complete metadata (hardware, parameters, results, verification)
 
 ### What "Mapping Function" Means
 
-The user is referring to the **mandatory workflow components** that map test results to verification and documentation:
+The user is referring to **two types of mapping** that should be used when creating tests:
 
-**Mapping Components:**
+#### 1. Concept Mapping (`hhml_parameter_mapping.py`)
+
+Maps test concepts to appropriate HHmL implementation:
+
+```python
+from hhml.utils.hhml_parameter_mapping import (
+    get_mapping_for_concept,
+    get_topology_for_concept,
+    get_observables_for_concept,
+    get_verification_type_for_concept,
+    generate_test_template_for_concept
+)
+
+# When user asks: "Create a test for vortex annihilation"
+mapping = get_mapping_for_concept("vortex annihilation")
+
+# Get implementation details
+topology = mapping.topology  # 'mobius'
+key_params = mapping.key_rnn_parameters  # ['antivortex_strength', 'annihilation_radius', ...]
+observables = mapping.observables  # ['annihilation_rate', 'vortex_quality', ...]
+verification = mapping.verification_type  # 'spatial'
+phases = mapping.suggested_phases  # ['Vortex generation', 'Antivortex injection', ...]
+
+# Or generate complete template
+template = generate_test_template_for_concept("vortex annihilation")
+```
+
+**Available concepts:**
+- Topological: möbius topology, klein bottle, topological phase transition, topological charge conservation
+- Vortex: vortex annihilation, vortex stability
+- Holographic: ads/cft correspondence, holographic encoding
+- Quantum: quantum coherence, quantum entanglement
+- Wave: gravitational waves, wave propagation
+- Cosmology: dark matter, cmb fluctuations
+- Particle: particle masses
+- Computational: numerical stability, hardware scalability
+
+#### 2. RNN Parameter Mapping (`rnn_parameter_mapping.py`)
+
+Defines the 23 RNN-controlled parameters:
+
+```python
+from hhml.utils.rnn_parameter_mapping import (
+    RNN_PARAMETERS,
+    get_parameter_info,
+    get_parameters_by_category,
+    create_parameter_dict_from_tensor
+)
+
+# Get parameter information
+kappa_info = get_parameter_info('kappa')
+print(f"{kappa_info.name}: {kappa_info.purpose}")
+print(f"Range: [{kappa_info.range_min}, {kappa_info.range_max}]")
+
+# Get all parameters in a category
+vortex_params = get_parameters_by_category('vortex_annihilation')
+# Returns: antivortex_strength, annihilation_radius, pruning_threshold, preserve_ratio
+
+# Convert RNN output tensor to named dictionary
+rnn_output = model(state)  # Shape: (23,)
+params = create_parameter_dict_from_tensor(rnn_output)
+# Returns: {'kappa': 1.5, 'delta': 0.3, ...}
+```
+
+#### 3. Workflow Mapping Components
+
+Maps test results to verification and documentation:
+
+**Workflow Components:**
 - `HardwareConfig` → Auto-scales parameters to current hardware
 - `EmergentVerifier` → Maps field tensors to real-world data (LIGO/CMB/particles)
 - `EmergentWhitepaperGenerator` → Maps results to professional documentation
 - `summary.json` → Maps all metadata for reproducibility
 
-**These are NOT optional** - every test must use this mapping.
+**ALL of these are MANDATORY** - every test must use all mapping functions.
 
 ### Example Interpretation
 
@@ -1834,14 +1903,30 @@ The user is referring to the **mandatory workflow components** that map test res
 
 **Your Response Should Be:**
 
-"I'll create a complete test script for Klein bottle topology following the mandatory HHmL workflow. This will include:
+"I'll create a complete test script for Klein bottle topology following the mandatory HHmL workflow.
+
+First, let me check the concept mapping:
+
+```python
+from hhml.utils.hhml_parameter_mapping import get_mapping_for_concept
+
+mapping = get_mapping_for_concept("klein bottle")
+# Returns: topology='klein_bottle', field_dynamics='holographic_resonance',
+#          key_rnn_parameters=['winding_density', 'twist_rate', 'cross_coupling'],
+#          observables=['vortex_density', 'topological_charge', 'non_orientability'],
+#          verification_type='spatial'
+```
+
+This tells me the test should include:
 
 1. **Hardware auto-scaling** - Runs optimally on any hardware (CPU → H200)
-2. **Klein bottle implementation** - Double-twisted Möbius surface
-3. **Field evolution** - Test topological properties and vortex behavior
-4. **Emergent verification** - Compare spatial patterns to CMB data
-5. **Whitepaper generation** - Complete documentation of results
-6. **Summary metadata** - Hardware, parameters, verification scores
+2. **Klein bottle topology** - Double-twisted Möbius surface (from mapping)
+3. **Holographic resonance dynamics** - Field evolution (from mapping)
+4. **Key RNN parameters** - winding_density, twist_rate, cross_coupling (from mapping)
+5. **Observables** - vortex_density, topological_charge, non_orientability (from mapping)
+6. **Emergent verification** - Spatial patterns → CMB comparison (from mapping)
+7. **Whitepaper generation** - Complete documentation of results
+8. **Summary metadata** - Hardware, parameters, verification scores
 
 The script will be: `simulations/topology/klein_bottle_test.py`"
 
