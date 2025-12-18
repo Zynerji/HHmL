@@ -1674,14 +1674,69 @@ axes[1,0].set_title('Parameter Phase Space')
 plt.savefig(f'test_cases/{test_name}/analysis/emergent_analysis.png')
 ```
 
-**5. Update Changelog**
+**5. Run Real-World Verification** *(NEW - MANDATORY)*
+
+Automatically verify against empirical physics data:
+```python
+from hhml.verification import LIGOVerification, CMBVerification, ParticleVerification
+
+# Load final state
+final_field = torch.load('checkpoint_final.pt')['field_state']
+vortex_energies = extract_vortex_energies(final_field)
+
+# Determine phenomenon type and run appropriate verification
+verification_results = {}
+
+# If oscillatory/wave-like behavior observed
+if phenomenon_has_oscillations:
+    ligo = LIGOVerification()
+    verification_results['ligo'] = ligo.compare_event(
+        'GW150914',
+        final_field,
+        save_results=True
+    )
+    print(f"LIGO overlap: {verification_results['ligo']['metrics']['overlap']:.4f}")
+
+# If spatial fluctuations observed
+if phenomenon_has_spatial_structure:
+    cmb = CMBVerification()
+    verification_results['cmb'] = cmb.compare_planck(
+        final_field,
+        cl_type='TT',
+        save_results=True
+    )
+    print(f"CMB χ²/DOF: {verification_results['cmb']['metrics']['reduced_chi_squared']:.3f}")
+
+# If discrete energy levels observed
+if phenomenon_has_discrete_energies:
+    particles = ParticleVerification()
+    verification_results['particles'] = particles.compare_pdg_masses(
+        vortex_energies,
+        tolerance=0.1,
+        save_results=True
+    )
+    print(f"Particle matches: {verification_results['particles']['matched_particles']}/{verification_results['particles']['total_particles']}")
+
+# Save verification results
+with open('verification_results.json', 'w') as f:
+    json.dump(verification_results, f, indent=2)
+```
+
+**Interpretation Guidelines**:
+- **Good LIGO match** (overlap > 0.7): Phenomenon exhibits GW-like oscillation patterns
+- **Good CMB match** (χ²/DOF < 3.0): Phenomenon exhibits CMB-like spatial fluctuations
+- **Good particle match** (> 50% matched): Phenomenon exhibits SM-like energy quantization
+
+**IMPORTANT**: These are *analogical comparisons* - not claims that HHmL models gravity/cosmology/particles. Strong matches suggest emergent mathematical structures share patterns with real physics, which **strengthens the novelty claim**.
+
+**6. Update Changelog**
 
 If discovery is significant, add to `CHANGELOG.md`:
 ```markdown
 ## [Unreleased]
 
 ### Discovered
-- **[Phenomenon Name]**: [Brief description] - [parameter correlations]
+- **[Phenomenon Name]**: [Brief description] - [parameter correlations] - [verification results]
 ```
 
 ---
@@ -1695,7 +1750,12 @@ Use this checklist after completing a training run:
 - [ ] **Check for strong correlations** (|r| > 0.7, p < 0.05)
 - [ ] **Identify unusual patterns** (spikes, phase transitions, convergence)
 - [ ] **Test topological specificity** (would this happen in torus/sphere?)
-- [ ] **Document in EMERGENTS.md** (use full template)
+- [ ] **🌍 Run real-world verification** (NEW - MANDATORY):
+  - [ ] Determine phenomenon type (oscillatory, spatial, energetic)
+  - [ ] Run appropriate verification (LIGO, CMB, or Particles)
+  - [ ] Document verification metrics in results JSON
+  - [ ] Interpret results (analogical pattern matching)
+- [ ] **Document in EMERGENTS.md** (use full template including verification)
 - [ ] **Update statistics** (total count, latest discovery date)
 - [ ] **Generate visualizations** (parameter evolution, phase space, correlations)
 - [ ] **Update README.md** (if novel capability discovered)
@@ -1727,6 +1787,13 @@ A phenomenon qualifies as **novel emergent** if it meets ALL criteria:
 5. ✅ **Statistical Significance**: Not a random fluctuation
    - p-value < 0.05 (Bonferroni corrected)
    - Effect size Cohen's d > 0.5
+
+6. ✅ **Real-World Verification** *(NEW - v0.1.0)*: Exhibits patterns similar to empirical physics
+   - **LIGO**: If oscillatory → compare to GW waveforms (overlap > 0.5 strengthens claim)
+   - **CMB**: If spatial fluctuations → compare to Planck spectra (χ²/DOF < 5.0 strengthens claim)
+   - **Particles**: If discrete energies → compare to PDG masses (match > 30% strengthens claim)
+   - **Interpretation**: Analogical comparisons testing mathematical pattern similarity
+   - **Not Required**: For all phenomena, but **strengthens novelty claim** if patterns match real physics
 
 ---
 

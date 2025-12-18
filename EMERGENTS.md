@@ -56,6 +56,10 @@ Each emergent phenomenon is documented with:
 - [ ] Reproduced with different random seeds
 - [ ] Scales to larger/smaller node counts
 - [ ] Absent in non-Möbius topologies (control)
+- [ ] **Real-world verification** (if applicable):
+  - [ ] LIGO waveform comparison (if oscillatory)
+  - [ ] CMB spectrum comparison (if spatial fluctuations)
+  - [ ] Particle mass comparison (if discrete energies)
 
 #### Scientific Significance
 [Why is this interesting? What does it tell us about topological field dynamics?]
@@ -384,13 +388,40 @@ When a potential emergent phenomenon is observed:
 - Measure if phenomenon disappears or weakens
 - Identify minimal parameter set required
 
-### 7. **Visualization**
+### 7. **Real-World Verification** *(NEW - Automated)*
+- **Determine phenomenon type**:
+  - Oscillatory/wave-like → LIGO comparison
+  - Spatial fluctuations → CMB comparison
+  - Discrete energy levels → Particle comparison
+- **Run verification**:
+  ```python
+  from hhml.verification import LIGOVerification, CMBVerification, ParticleVerification
+
+  # Example: Oscillatory phenomenon
+  ligo = LIGOVerification()
+  verification = ligo.compare_event('GW150914', field_tensor)
+
+  # Example: Spatial fluctuations
+  cmb = CMBVerification()
+  verification = cmb.compare_planck(field_tensor, cl_type='TT')
+
+  # Example: Discrete energies
+  particles = ParticleVerification()
+  verification = particles.compare_pdg_masses(energy_spectrum)
+  ```
+- **Document results** in EMERGENTS.md:
+  - LIGO overlap > 0.5 → "Shows GW-like pattern"
+  - CMB χ²/DOF < 5.0 → "Shows CMB-like fluctuations"
+  - Particle match > 30% → "Shows SM-like energy levels"
+- **Interpretation**: If verification metrics are good, phenomenon exhibits mathematical patterns similar to real physics (strengthens novelty claim)
+
+### 8. **Visualization**
 - Generate field snapshots at phenomenon peak
 - Create parameter trajectory plots
 - Render 3D vortex structure if applicable
 
-### 8. **Publication**
-- Add to EMERGENTS.md with full template
+### 9. **Publication**
+- Add to EMERGENTS.md with full template (including verification results)
 - Generate whitepaper section
 - Update README.md Key Features if novel capability
 
