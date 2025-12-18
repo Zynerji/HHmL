@@ -59,6 +59,7 @@ from hhml.dark_matter.cosmological_validator import (
 )
 from hhml.utils.emergent_verifier import EmergentVerifier
 from hhml.utils.emergent_whitepaper import EmergentWhitepaperGenerator
+from hhml.utils.hardware_config import HardwareConfig
 
 
 def parse_args():
@@ -83,11 +84,18 @@ def parse_args():
     parser.add_argument('--branching-factor', type=int, default=2,
                        help='Branches per parent in tree mode (default: 2)')
 
-    # Möbius strip configuration
+    # Hardware auto-scaling
+    parser.add_argument('--auto-scale', action='store_true',
+                       help='Auto-scale parameters based on detected hardware')
+    parser.add_argument('--scale-mode', type=str, default='benchmark',
+                       choices=['benchmark', 'training', 'production'],
+                       help='Scaling mode (only with --auto-scale)')
+
+    # Möbius strip configuration (ignored if --auto-scale is set)
     parser.add_argument('--num-strips', type=int, default=10,
-                       help='Number of Möbius strips')
+                       help='Number of Möbius strips (ignored with --auto-scale)')
     parser.add_argument('--nodes-per-strip', type=int, default=2000,
-                       help='Nodes per strip')
+                       help='Nodes per strip (ignored with --auto-scale)')
 
     # Pruning configuration
     parser.add_argument('--coherence-threshold', type=float, default=0.82,
@@ -125,6 +133,38 @@ def main():
     print("DARK MATTER AS MULTIVERSE PRUNING RESIDUE - FULL TEST")
     print("="*80)
     print()
+
+    # =============================================================================
+    # PHASE 0: Hardware Detection and Auto-Scaling
+    # =============================================================================
+
+    print("="*80)
+    print("PHASE 0: HARDWARE DETECTION AND AUTO-SCALING")
+    print("="*80)
+    print()
+
+    hw_config = HardwareConfig()
+    hw_config.print_info()
+    print()
+
+    # Auto-scale parameters if requested
+    if args.auto_scale:
+        print(f"Auto-scaling enabled (mode: {args.scale_mode})")
+        print()
+
+        optimal_params = hw_config.get_optimal_params(mode=args.scale_mode)
+
+        # Override args with optimal parameters
+        args.num_strips = optimal_params.num_strips
+        args.nodes_per_strip = optimal_params.nodes_per_strip
+
+        hw_config.print_optimal_params(mode=args.scale_mode)
+        print()
+        print(f"Parameters auto-scaled for {hw_config.get_hardware_tier().upper()} hardware")
+        print()
+    else:
+        print("Manual parameter configuration (use --auto-scale for hardware optimization)")
+        print()
 
     # Create output directory
     output_dir = Path(args.output_dir)
@@ -598,6 +638,15 @@ def main():
     summary = {
         'timestamp': timestamp,
         'config': vars(args),
+        'hardware': {
+            'device': hw_config.device_type,
+            'gpu_name': hw_config.gpu_name,
+            'vram_gb': hw_config.vram_gb,
+            'ram_gb': hw_config.ram_gb,
+            'hardware_tier': hw_config.get_hardware_tier(),
+            'auto_scaled': args.auto_scale,
+            'scale_mode': args.scale_mode if args.auto_scale else None
+        },
         'multiverse': {
             'num_branches': len(branches),
             'perturbation_scale': args.perturbation_scale,

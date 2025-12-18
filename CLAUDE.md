@@ -1530,6 +1530,266 @@ Good luck with the Möbius journey! 🎭
 
 ---
 
+## 🧪 MANDATORY TEST WORKFLOW (ALL TESTS MUST FOLLOW)
+
+**CRITICAL**: Every test script (`simulations/`, `examples/`, `tests/`) MUST implement this standardized workflow to ensure reproducibility, hardware portability, and proper emergent detection.
+
+### Phase Structure (MANDATORY)
+
+All test scripts must follow this phase structure:
+
+```python
+#!/usr/bin/env python3
+"""
+[Test Name] - Hardware Scalable Test
+===================================
+
+[Description of what this test does]
+
+Target Hardware: Auto-scaled (CPU → H200)
+Expected Duration: [time range]
+
+Author: HHmL Project
+Date: YYYY-MM-DD
+"""
+
+import sys
+from pathlib import Path
+import argparse
+
+# Add project root
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from hhml.utils.hardware_config import HardwareConfig
+from hhml.utils.emergent_verifier import EmergentVerifier
+from hhml.utils.emergent_whitepaper import EmergentWhitepaperGenerator
+
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description='[Test Name]')
+
+    # MANDATORY: Hardware auto-scaling arguments
+    parser.add_argument('--auto-scale', action='store_true',
+                       help='Auto-scale parameters based on detected hardware')
+    parser.add_argument('--scale-mode', type=str, default='benchmark',
+                       choices=['benchmark', 'training', 'production'],
+                       help='Scaling mode (only with --auto-scale)')
+
+    # Test-specific arguments (will be overridden if --auto-scale)
+    parser.add_argument('--num-strips', type=int, default=10)
+    parser.add_argument('--nodes-per-strip', type=int, default=2000)
+    # ... more args ...
+
+    return parser.parse_args()
+
+def main():
+    """Run test with mandatory workflow."""
+    args = parse_args()
+
+    # =========================================================================
+    # PHASE 0: Hardware Detection and Auto-Scaling (MANDATORY)
+    # =========================================================================
+
+    print("="*80)
+    print("PHASE 0: HARDWARE DETECTION AND AUTO-SCALING")
+    print("="*80)
+    print()
+
+    hw_config = HardwareConfig()
+    hw_config.print_info()
+    print()
+
+    # Auto-scale if requested
+    if args.auto_scale:
+        print(f"Auto-scaling enabled (mode: {args.scale_mode})")
+        optimal_params = hw_config.get_optimal_params(mode=args.scale_mode)
+
+        # Override args with optimal parameters
+        args.num_strips = optimal_params.num_strips
+        args.nodes_per_strip = optimal_params.nodes_per_strip
+        # ... override other scalable params ...
+
+        hw_config.print_optimal_params(mode=args.scale_mode)
+        print(f"Parameters auto-scaled for {hw_config.get_hardware_tier().upper()}")
+    else:
+        print("Manual configuration (use --auto-scale for optimization)")
+
+    print()
+
+    # =========================================================================
+    # PHASE 1-N: Test-Specific Logic
+    # =========================================================================
+
+    # Your test implementation here
+    # - Generate data
+    # - Run simulation
+    # - Collect metrics
+    # - Validate results
+
+    final_field = ...  # Your final field state
+    test_results = {
+        'key_metrics': {...},
+        'parameters': {...},
+        'correlations': {...}
+    }
+
+    # =========================================================================
+    # PHASE N+1: Emergent Verification (MANDATORY if results meet threshold)
+    # =========================================================================
+
+    print("="*80)
+    print(f"PHASE {N+1}: EMERGENT PHENOMENON VERIFICATION")
+    print("="*80)
+    print()
+
+    # Only run if results meet quality threshold
+    if test_results['overall_score'] >= 0.5:
+        print("Results meet threshold for emergent verification")
+        print()
+
+        # Prepare discovery data
+        discovery_data = {
+            'phenomenon_name': '[Test Name] - [Discovery]',
+            'training_run': str(Path(__file__)),
+            'timestamp': timestamp,
+            'random_seed': args.seed,
+            'hardware': {
+                'device': hw_config.device_type,
+                'tier': hw_config.get_hardware_tier(),
+                'auto_scaled': args.auto_scale
+            },
+            'parameters': {...},  # All test parameters
+            'key_metrics': {...},  # Important results
+            'correlations': {...},  # Parameter correlations
+            'checkpoint': 'path/to/checkpoint.pt'
+        }
+
+        # Run verification
+        verifier = EmergentVerifier(data_dir="data")
+        verification_results = verifier.verify_phenomenon(
+            field_tensor=final_field,
+            phenomenon_type='auto',  # or 'oscillatory', 'spatial', 'energetic'
+            save_results=True,
+            output_dir=str(run_dir / "verification")
+        )
+
+        print(f"Novelty score: {verification_results['novelty_score']:.3f}")
+        print(f"Is novel: {verification_results['is_novel']}")
+        print()
+
+        # Generate whitepaper if novel
+        if verification_results['is_novel']:
+            print("Phenomenon is NOVEL - generating whitepaper...")
+
+            generator = EmergentWhitepaperGenerator()
+            whitepaper_path = generator.generate(
+                phenomenon_name="[Discovery Name]",
+                discovery_data=discovery_data,
+                verification_results=verification_results,
+                output_dir=str(run_dir / "whitepapers" / "EMERGENTS")
+            )
+
+            print(f"Whitepaper: {whitepaper_path}")
+            print("Update EMERGENTS.md with this discovery")
+    else:
+        print("Results do not meet threshold for verification")
+
+    # Save summary with hardware info
+    summary = {
+        'timestamp': timestamp,
+        'config': vars(args),
+        'hardware': {
+            'device': hw_config.device_type,
+            'gpu_name': hw_config.gpu_name,
+            'vram_gb': hw_config.vram_gb,
+            'hardware_tier': hw_config.get_hardware_tier(),
+            'auto_scaled': args.auto_scale,
+            'scale_mode': args.scale_mode if args.auto_scale else None
+        },
+        'test_results': test_results,
+        'emergent_verification': verification_results if test_results['overall_score'] >= 0.5 else None
+    }
+
+    with open(run_dir / "summary.json", 'w') as f:
+        json.dump(summary, f, indent=2)
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
+```
+
+### Mandatory Components
+
+**1. Hardware Auto-Scaling (PHASE 0)**
+- ✅ Import `HardwareConfig` from `hhml.utils.hardware_config`
+- ✅ Add `--auto-scale` and `--scale-mode` arguments
+- ✅ Detect hardware and print info
+- ✅ Override parameters with optimal values if `--auto-scale`
+- ✅ Document hardware in summary JSON
+
+**2. Test Logic (PHASE 1-N)**
+- ✅ Implement test-specific phases
+- ✅ Collect all metrics and parameters
+- ✅ Save intermediate results
+
+**3. Emergent Verification (PHASE N+1)**
+- ✅ Import `EmergentVerifier` and `EmergentWhitepaperGenerator`
+- ✅ Run verification if results meet threshold (typically score >= 0.5)
+- ✅ Prepare complete discovery data dictionary
+- ✅ Run `verifier.verify_phenomenon()` with field tensor
+- ✅ Generate whitepaper if `is_novel == True`
+- ✅ Save verification results to summary JSON
+
+### Example Command Lines
+
+```bash
+# Quick benchmark on any hardware (auto-scaled)
+python script.py --auto-scale --scale-mode benchmark
+
+# Full training run (auto-scaled for H200)
+python script.py --auto-scale --scale-mode training
+
+# Production run (max scale for hardware)
+python script.py --auto-scale --scale-mode production
+
+# Manual configuration (for specific experiments)
+python script.py --num-strips 20 --nodes-per-strip 50000
+```
+
+### Reference Implementation
+
+See `simulations/dark_matter/full_dark_matter_test.py` for complete reference implementation including:
+- PHASE 0: Hardware detection and auto-scaling
+- PHASE 1-4: Test-specific logic (multiverse, pruning, measurement, validation)
+- PHASE 5: Emergent verification and whitepaper generation
+
+### Benefits of This Workflow
+
+1. **Hardware Portability**: Runs optimally on CPU, low GPU, high GPU, or H200
+2. **Reproducibility**: Hardware info tracked in all results
+3. **Automatic Documentation**: Whitepapers generated for novel discoveries
+4. **Scientific Rigor**: Real-world verification strengthens novelty claims
+5. **Consistent Structure**: Easy to understand and maintain
+
+### Testing Your Script
+
+```bash
+# Test on your current hardware
+python your_script.py --auto-scale --scale-mode benchmark
+
+# Should output:
+# - Hardware detection info
+# - Auto-scaled parameters
+# - Test results
+# - Emergent verification (if threshold met)
+# - Whitepaper (if novel)
+# - summary.json with complete metadata
+```
+
+---
+
 ## 🔬 EMERGENT PHENOMENA DETECTION (MANDATORY AFTER EVERY TEST)
 
 **Location**: `EMERGENTS.md` (root directory)
