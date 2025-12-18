@@ -1,0 +1,19 @@
+{
+  "timestamp": "20251218_175221",
+  "config": {
+    "difficulty": 20,
+    "lattice_nodes": 1000,
+    "max_depth": 2,
+    "cycles": 10
+  },
+  "results": {
+    "verdict": "FAILED",
+    "singularity_count": 100,
+    "mean_improvement_pct": 0.14649957892634374,
+    "mann_whitney_p": 0.43883088007553545,
+    "significant": false,
+    "hash_quine_detected": true,
+    "max_depth_reached": 2,
+    "collapse_time_sec": 5.9203200340271
+  }
+}
