@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real-World Data Verification System**: Ground emergent phenomena in empirical physics
+  - `LIGOVerification`: Compare boundary resonances to gravitational waveforms
+    - Automatic fetching from GWOSC (GW150914, GW151226, GW170817)
+    - Matched-filter overlap, SNR computation, waveform whiten
+    - Strain extraction from field evolution tensors
+  - `CMBVerification`: Compare field fluctuations to Planck CMB power spectra
+    - Angular power spectrum computation via HEALPix
+    - χ² fitting against Planck TT/EE/BB spectra
+    - ΛCDM fiducial generation via CAMB
+  - `ParticleVerification`: Match vortex energies to particle masses
+    - PDG mass database comparison (SM particles)
+    - LHC invariant mass histogram matching
+    - χ² and KS statistical tests
+  - Example scripts: `examples/verification/verify_*.py`
+  - Complete documentation (docs/guides/VERIFICATION_SYSTEM.md)
+  - Dependencies: gwpy, healpy, camb, uproot, awkward, astropy
+
+- **Emergent Phenomena Detection System**: Comprehensive tracking of novel discoveries
+  - `EMERGENTS.md`: Authoritative catalog of all discovered phenomena
+    - Template for documenting discoveries with full scientific rigor
+    - Statistical significance criteria (p < 0.05, |r| > 0.7)
+    - Reproducibility requirements and validation tests
+  - Automated detection workflow integrated into development cycle
+  - 3 confirmed phenomena documented (winding scaling, quality control, parameter triplets)
+
 - **Environment System**: Flexible simulation-to-topology mapping
   - `EnvironmentManager`: Load and manage environment configurations from YAML
   - `SimulationMapper`: Map generic parameters to HHmL-specific implementations

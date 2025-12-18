@@ -24,6 +24,8 @@
 - [Key Features](#key-features)
 - [Mathematical Framework](#mathematical-framework)
 - [Quick Start](#quick-start)
+- [Environment System](#environment-system-usage)
+- [Real-World Data Verification](#real-world-data-verification)
 - [Docker Deployment](#docker-deployment)
 - [Architecture](#architecture)
 - [Scientific Workflow](#scientific-workflow)
@@ -103,6 +105,83 @@ HHmL's reinforcement learning system controls **23 parameters** across 7 categor
 - **Learned Optimization**: RNN discovers optimal curation strategies via reinforcement learning
 
 **Result**: Achieved **100% peak vortex density** (cycle 490) through autonomous quality control.
+
+### 🔧 Environment System *(New)*
+
+<div align="center">
+
+*Flexible simulation-to-topology mapping for standardized testing and reproducible research*
+
+</div>
+
+- **YAML Configuration**: Define complete simulations in structured YAML files
+- **Pre-defined Environments**: `benchmark_mobius`, `test_small` ready to use
+- **Flexible Mapping**: Generic parameters automatically map to HHmL topologies
+- **Pytest Integration**: Seamless test fixtures for environment-based testing
+- **Hardware Abstraction**: Automatic device selection and validation
+- **Reproducibility**: Fixed seeds, deterministic execution, provenance tracking
+
+```python
+from hhml.utils.simulation_mapper import create_simulation_from_environment
+
+# Load pre-configured environment
+sim = create_simulation_from_environment('benchmark_mobius')
+
+# Extract configured components
+topology = sim['topology']
+rnn_controller = sim['rnn_controller']
+training_config = sim['training_config']
+
+# Run with validated configuration
+for cycle in range(training_config['cycles']):
+    topology.evolve(timestep=training_config['timestep'])
+```
+
+### 🌍 Real-World Data Verification *(New)*
+
+<div align="center">
+
+*Ground emergent phenomena in empirical physics through comparison with real experimental data*
+
+</div>
+
+HHmL now includes comprehensive verification against real-world physics data:
+
+**LIGO Gravitational Waves**:
+- Compare boundary resonances to real LIGO/Virgo detections
+- Matched-filter overlap with events like GW150914 (first black hole merger)
+- Automatic data fetching from GWOSC (Gravitational Wave Open Science Center)
+
+**Planck CMB Power Spectra**:
+- Map field fluctuations to cosmic microwave background anisotropies
+- χ² fitting against Planck TT/EE/BB spectra
+- ΛCDM fiducial comparisons via CAMB
+
+**Particle Physics (LHC/PDG)**:
+- Match vortex energies to Standard Model particle masses
+- Compare excitation spectra to LHC invariant mass histograms
+- Automated comparison with PDG particle database
+
+```python
+from hhml.verification import LIGOVerification, CMBVerification, ParticleVerification
+
+# Compare to LIGO waveforms
+ligo = LIGOVerification()
+results = ligo.compare_event('GW150914', field_tensor)
+print(f"Overlap: {results['metrics']['overlap']:.4f}")
+
+# Compare to Planck CMB
+cmb = CMBVerification()
+results = cmb.compare_planck(field_tensor, cl_type='TT')
+print(f"χ²/DOF: {results['metrics']['reduced_chi_squared']:.3f}")
+
+# Compare to particle masses
+particles = ParticleVerification()
+results = particles.compare_pdg_masses(vortex_energies)
+print(f"Matched: {results['matched_particles']}/{results['total_particles']}")
+```
+
+**Philosophy**: These are *analogical comparisons* - HHmL is not claiming to model gravity or particles, but testing if emergent mathematical structures exhibit patterns similar to physical phenomena. This grounds exploration in testable hypotheses.
 
 ### ⚡ Production-Ready Infrastructure
 
@@ -219,6 +298,292 @@ python -m hhml.monitoring.live_dashboard
 # Generate whitepaper from results
 python tools/whitepaper/whitepaper_generator.py --results data/results/latest
 ```
+
+---
+
+## Environment System Usage
+
+The **Environment System** provides flexible simulation-to-topology mapping through YAML configuration files. This enables standardized testing, easy benchmarking, and reproducible research.
+
+### Using Pre-defined Environments
+
+HHmL includes pre-configured environments for common use cases:
+
+```python
+from hhml.utils.simulation_mapper import create_simulation_from_environment
+
+# Use standard benchmark (4K nodes, 1000 cycles, 23 RNN parameters)
+sim = create_simulation_from_environment('benchmark_mobius')
+
+# Extract configured components
+topology = sim['topology']              # Möbius strip with optimal windings
+rnn_controller = sim['rnn_controller']  # LSTM with 23 parameters
+training_config = sim['training_config']  # Learning rate, cycles, etc.
+validation_targets = sim['validation_targets']  # Expected outcomes
+
+# Run training
+for cycle in range(training_config['cycles']):
+    topology.evolve(timestep=training_config['timestep'])
+
+    # Validate against targets
+    density = topology.get_vortex_density()
+    if density >= validation_targets['vortex_density']['target']:
+        print(f"Target achieved at cycle {cycle}!")
+        break
+```
+
+### Available Environments
+
+| Environment | Nodes | Cycles | Purpose |
+|:------------|:-----:|:------:|:--------|
+| `benchmark_mobius` | 4,000 | 1,000 | Standard benchmark, full 23 parameters |
+| `test_small` | 1,000 | 10 | Fast testing, 10 parameters |
+
+### Creating Custom Environments
+
+**Method 1: YAML File**
+
+Create `configs/environments/my_experiment.yaml`:
+
+```yaml
+metadata:
+  name: "my_experiment"
+  version: "1.0.0"
+  description: "Custom scaling study"
+  author: "@YourHandle"
+
+topology:
+  type: "mobius"
+  mobius:
+    windings: 120        # Custom winding number
+    radius: 1.5          # Custom radius
+
+simulation:
+  nodes: 10000           # 10K nodes
+  cycles: 2000           # Extended training
+
+reproducibility:
+  random_seed: 42
+  deterministic: true
+```
+
+Load and use:
+
+```python
+sim = create_simulation_from_environment('my_experiment')
+```
+
+**Method 2: Programmatic**
+
+```python
+from hhml.utils.environment_manager import EnvironmentManager
+
+manager = EnvironmentManager()
+
+# Create from template with overrides
+env = manager.create_environment(
+    name="scaling_10K",
+    template="benchmark_mobius",
+    **{
+        "simulation.nodes": 10000,
+        "topology.mobius.windings": 150,
+        "hardware.min_memory_gb": 32
+    }
+)
+
+# Save for reuse
+manager.save_environment(env)
+
+# Use immediately
+from hhml.utils.simulation_mapper import SimulationMapper
+mapper = SimulationMapper(env)
+sim = mapper.create_complete_simulation()
+```
+
+### Test Integration
+
+Environment fixtures work seamlessly with pytest:
+
+```python
+def test_vortex_density(test_simulation):
+    """Uses test_small environment automatically."""
+    topology = test_simulation['topology']
+    targets = test_simulation['validation_targets']
+
+    # Run simulation
+    topology.evolve(cycles=10)
+
+    # Validate
+    density = topology.get_vortex_density()
+    assert density >= targets['vortex_density']['min']
+
+def test_custom_config(custom_simulation):
+    """Create custom environment on-the-fly."""
+    sim = custom_simulation(
+        name="my_test",
+        simulation_nodes=5000,
+        topology_mobius_windings=95
+    )
+
+    assert sim['topology'] is not None
+```
+
+**See full documentation:** [Environment System Guide](docs/guides/ENVIRONMENT_SYSTEM.md)
+
+---
+
+## Real-World Data Verification
+
+The **Verification System** grounds HHmL's emergent phenomena in empirical physics by comparing simulation outputs to real experimental data. This moves HHmL from pure mathematical exploration toward **testable hypotheses** against actual physical observations.
+
+### Philosophy
+
+**Important**: These are *analogical comparisons*. HHmL is not claiming to model fundamental physics, but testing if emergent mathematical structures exhibit patterns similar to physical phenomena. This provides:
+
+- **Falsifiable Predictions**: Testable correlations between parameters and observables
+- **Empirical Grounding**: Comparison against real data validates or refutes emergent patterns
+- **Pattern Discovery**: Identify mathematical structures shared between topology and physics
+
+### 1. LIGO Gravitational Waves
+
+Compare HHmL boundary resonances to real gravitational wave detections from LIGO/Virgo.
+
+```python
+from hhml.verification.ligo import LIGOVerification
+
+# Initialize verifier
+ligo = LIGOVerification(data_dir="data/ligo")
+
+# Compare simulation to GW150914 (first black hole merger)
+results = ligo.compare_event(
+    event_name='GW150914',
+    sim_strain_tensor=field_tensor,  # [time_steps, nodes, features]
+    detector='H1',  # Hanford detector
+    save_results=True
+)
+
+print(f"Waveform overlap: {results['metrics']['overlap']:.4f}")
+print(f"Signal-to-noise: {results['metrics']['snr']:.2f}")
+print(f"Interpretation: {results['interpretation']}")
+```
+
+**Known Events**: GW150914 (BBH), GW151226 (BBH), GW170817 (BNS multi-messenger)
+
+**Metrics**:
+- **Overlap** (0-1): Matched-filter correlation
+- **SNR**: Signal-to-noise ratio
+- **Mismatch**: 1 - overlap
+
+**Data Source**: [GWOSC](https://gwosc.org/) - Gravitational Wave Open Science Center
+
+### 2. Planck CMB Power Spectra
+
+Map field fluctuations to cosmic microwave background temperature anisotropies.
+
+```python
+from hhml.verification.cmb import CMBVerification
+
+# Initialize verifier
+cmb = CMBVerification(data_dir="data/cmb", nside=512)
+
+# Compare to Planck 2018 TT spectrum
+results = cmb.compare_planck(
+    sim_field_tensor=field_tensor,  # [nodes, features]
+    cl_type='TT',  # Temperature auto-correlation
+    lmax=2000,  # Maximum multipole
+    save_results=True
+)
+
+print(f"χ²: {results['metrics']['chi_squared']:.2f}")
+print(f"χ²/DOF: {results['metrics']['reduced_chi_squared']:.3f}")
+print(f"p-value: {results['metrics']['p_value']:.4f}")
+```
+
+**Spectrum Types**: TT (temperature), EE (E-polarization), BB (B-polarization), TE (cross)
+
+**Metrics**:
+- **χ²**: Chi-squared statistic
+- **χ²/DOF**: Reduced chi-squared (good fit: ~1)
+- **p-value**: Statistical significance
+
+**Data Source**: Planck Legacy Archive + CAMB (ΛCDM fiducial)
+
+### 3. Particle Physics (LHC/PDG)
+
+Match vortex excitation energies to Standard Model particle masses.
+
+```python
+from hhml.verification.particles import ParticleVerification
+
+# Initialize verifier
+particles = ParticleVerification(data_dir="data/particles")
+
+# Compare to PDG masses
+results = particles.compare_pdg_masses(
+    sim_energies=vortex_energies,  # [N_vortices] in GeV
+    particle_list=['electron', 'muon', 'Z_boson', 'Higgs'],
+    tolerance=0.1  # ±10% match tolerance
+)
+
+print(f"Matched: {results['matched_particles']}/{results['total_particles']}")
+
+# Compare to LHC Higgs channel
+lhc_results = particles.compare_lhc_channel(
+    sim_energies=vortex_energies,
+    channel='higgs_4l',  # H → 4 leptons
+    scale_factor=1.0,  # GeV conversion
+    save_results=True
+)
+
+print(f"χ²/DOF: {lhc_results['metrics']['reduced_chi_squared']:.3f}")
+```
+
+**Known Particles**: electron (0.511 MeV), muon (105.66 MeV), Z (91.2 GeV), Higgs (125.25 GeV), ...
+
+**LHC Channels**: higgs_4l, Z_ee, W_enu
+
+**Metrics**:
+- **Match fraction**: % of particles matched within tolerance
+- **χ²/DOF**: Invariant mass spectrum fit quality
+- **KS statistic**: Kolmogorov-Smirnov distribution test
+
+**Data Sources**: [PDG](https://pdg.lbl.gov/), [HEPData](https://hepdata.net/)
+
+### Integration Examples
+
+**As RL Reward**:
+```python
+# Add verification metrics to training reward
+reward = (
+    0.7 * reward_vortex_density +
+    0.15 * ligo_results['metrics']['overlap'] +
+    0.15 * (1.0 / (1.0 + cmb_results['metrics']['reduced_chi_squared']))
+)
+```
+
+**In Whitepaper**:
+```python
+# Automatically include verification results
+whitepaper_data['verification'] = {
+    'ligo': ligo_results,
+    'cmb': cmb_results,
+    'particles': particle_results
+}
+```
+
+### Dependencies
+
+Install verification libraries:
+
+```bash
+pip install gwpy healpy camb uproot awkward astropy
+```
+
+**Optional**: If dependencies not installed, all modules provide synthetic data for testing.
+
+**See full documentation:** [Verification System Guide](docs/guides/VERIFICATION_SYSTEM.md)
+
+**Example scripts**: `examples/verification/verify_*.py`
 
 ---
 
@@ -398,6 +763,7 @@ graph LR
 
 | Document | Description |
 |:---------|:------------|
+| [**Environment System Guide**](docs/guides/ENVIRONMENT_SYSTEM.md) | Simulation-to-topology mapping system |
 | [**Installation Guide**](docs/guides/installation.md) | Detailed installation instructions |
 | [**User Guide**](docs/guides/user_guide.md) | Complete usage tutorial |
 | [**API Reference**](docs/guides/api_reference.md) | Python API documentation |

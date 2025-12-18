@@ -31,3 +31,19 @@ pytest>=7.4.0
 
 # Optional (quantum chemistry - can be slow to install)
 pyscf>=2.3.0
+
+# Real-world data verification (NEW - v0.1.0)
+# ============================================
+# LIGO gravitational wave data
+gwpy>=3.0.0  # LIGO/Virgo waveform analysis
+
+# CMB power spectra (Planck)
+healpy>=1.16.0  # HEALPix maps and angular power spectra
+camb>=1.5.0  # ΛCDM cosmology power spectra (optional but recommended)
+
+# Particle physics data
+uproot>=5.0.0  # Pure Python ROOT I/O (LHC data)
+awkward>=2.0.0  # Array library for particle physics
+
+# Additional utilities for verification
+astropy>=5.3.0  # Astronomical data handling
