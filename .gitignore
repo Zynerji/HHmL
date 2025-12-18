@@ -192,3 +192,12 @@ test_cases/benchmarks/results/
 !.dockerignore
 !.editorconfig
 !.github/
+
+# Private working directories (never pushed to GitHub)
+scratch/
+playground/
+working/
+sandbox/
+experiments/
+test_local/
+private/
