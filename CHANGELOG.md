@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Environment System**: Flexible simulation-to-topology mapping
+  - `EnvironmentManager`: Load and manage environment configurations from YAML
+  - `SimulationMapper`: Map generic parameters to HHmL-specific implementations
+  - Environment schema with complete configuration specification
+  - Pre-defined environments: `benchmark_mobius`, `test_small`
+  - Pytest fixtures for environment-based testing
+  - Comprehensive documentation (docs/guides/ENVIRONMENT_SYSTEM.md)
+  - Automatic hardware detection and validation
+  - Reproducibility controls (fixed seeds, deterministic execution)
+
 - Complete production-ready refactoring with modular architecture
 - Docker integration with multi-stage builds (CPU, CUDA, development images)
 - Docker Compose orchestration for training, monitoring, and tools

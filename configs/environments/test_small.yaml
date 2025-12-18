@@ -1,0 +1,99 @@
+# Small Test Environment
+# Minimal configuration for fast unit tests
+
+metadata:
+  name: "test_small"
+  version: "1.0.0"
+  description: "Small fast test environment for unit tests"
+  author: "@Conceptual1"
+  created: "2025-12-17"
+  tags: ["test", "small", "fast"]
+
+topology:
+  type: "mobius"
+  dimensions: 11
+
+  mobius:
+    strips: 1
+    radius: 1.0
+    width: 0.5
+    twist: 3.14159
+    windings: 50
+
+field_dynamics:
+  equation: "holographic_resonance"
+
+  holographic:
+    damping: 0.1
+    nonlinearity: 0.01
+    wavenumber: 10.0
+    sources: 50
+    amplitude_variance: 0.5
+
+rnn_control:
+  enabled: true
+  architecture: "lstm"
+  hidden_dim: 256
+  num_layers: 2
+
+  parameters:
+    geometry: [kappa, delta]
+    physics: [damping, nonlinearity]
+    spectral: [helical_frequency]
+    sampling: [sample_ratio]
+    mode: [sparse_density]
+    topology: [winding_density]
+    annihilation: [antivortex_strength, pruning_threshold]
+
+  reinforcement_learning:
+    algorithm: "td3"
+    learning_rate: 0.001
+    discount_factor: 0.99
+    buffer_size: 1000
+    batch_size: 32
+
+simulation:
+  nodes: 1000
+  cycles: 10
+  timestep: 0.01
+
+hardware:
+  device: "cpu"
+  min_memory_gb: 2
+  recommended_memory_gb: 4
+  precision: "float32"
+
+validation:
+  targets:
+    vortex_density:
+      min: 0.50
+      target: 0.70
+
+  tests:
+    - topology_validation
+    - numerical_stability
+
+monitoring:
+  dashboard:
+    enabled: false
+
+  metrics:
+    save_frequency: 5
+    save_checkpoints: false
+
+  logging:
+    level: "WARNING"
+
+output:
+  directory: "data/results/{experiment}"
+  save_final_state: false
+  save_trajectories: false
+  generate_whitepaper: false
+
+  artifacts:
+    - metrics
+
+reproducibility:
+  random_seed: 42
+  deterministic: true
+  track_provenance: false

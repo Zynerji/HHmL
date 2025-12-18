@@ -1,0 +1,197 @@
+# HHmL Environment Schema Definition
+# This defines the standard format for environment configuration files
+
+# Environment metadata
+metadata:
+  name: "environment_name"              # Human-readable name
+  version: "1.0.0"                      # Environment version (semantic versioning)
+  description: "Brief description"      # What this environment is for
+  author: "@Conceptual1"                # Environment creator
+  created: "2025-12-17"                 # Creation date
+  tags: ["benchmark", "test", "research"]  # Classification tags
+
+# Topology configuration
+topology:
+  type: "mobius"                        # Options: mobius, torus, sphere, klein_bottle
+  dimensions: 11                        # Total dimensions (HHmL standard: 11)
+
+  # Möbius-specific parameters
+  mobius:
+    strips: 1                           # Number of Möbius strips (1 or 2)
+    radius: 1.0                         # Strip radius
+    width: 0.5                          # Half-width of strip
+    twist: 3.14159                      # Twist parameter (π for Möbius)
+    windings: 109                       # Number of loops (optimal: ~109-110)
+
+  # Alternative topology parameters (if not mobius)
+  torus:
+    major_radius: 1.0
+    minor_radius: 0.3
+
+  sphere:
+    radius: 1.0
+    nodes: 4000
+
+# Field dynamics configuration
+field_dynamics:
+  equation: "holographic_resonance"     # Options: holographic_resonance, gft_condensate
+
+  # Holographic resonance parameters
+  holographic:
+    damping: 0.1                        # Damping coefficient γ
+    nonlinearity: 0.01                  # Nonlinearity strength λ
+    wavenumber: 10.0                    # Wavenumber k
+    sources: 100                        # Number of acoustic sources
+    amplitude_variance: 0.5             # Variance in source amplitudes
+
+  # GFT parameters (if using GFT dynamics)
+  gft:
+    coupling_constant: 0.1
+    interaction_order: 3
+    field_colors: 3
+
+# RNN control configuration
+rnn_control:
+  enabled: true                         # Whether RNN controls parameters
+  architecture: "lstm"                  # Options: lstm, gru, transformer
+  hidden_dim: 4096                      # Hidden layer dimension
+  num_layers: 4                         # Number of LSTM layers
+
+  # Controlled parameters (23 total in HHmL)
+  parameters:
+    geometry:                           # 4 parameters
+      - kappa                           # Elongation
+      - delta                           # Triangularity
+      - qec_layers                      # QEC layers
+      - num_sites                       # Number of sites
+
+    physics:                            # 4 parameters
+      - damping
+      - nonlinearity
+      - amplitude_variance
+      - diffusion
+
+    spectral:                           # 3 parameters
+      - helical_frequency
+      - diffusion_timestep
+      - spectral_weight
+
+    sampling:                           # 3 parameters
+      - sample_ratio
+      - neighbors
+      - sparsity
+
+    mode:                               # 2 parameters
+      - sparse_density
+      - spectral_activation
+
+    topology:                           # 3 parameters
+      - winding_density
+      - twist_rate
+      - coupling
+
+    annihilation:                       # 4 parameters
+      - antivortex_strength
+      - annihilation_radius
+      - pruning_threshold
+      - preserve_ratio
+
+  # RL configuration
+  reinforcement_learning:
+    algorithm: "td3-sac"                # Options: td3, sac, td3-sac
+    learning_rate: 0.0001
+    discount_factor: 0.99
+    buffer_size: 100000
+    batch_size: 256
+
+# Simulation parameters
+simulation:
+  nodes: 4000                           # Total nodes in simulation
+  cycles: 1000                          # Training/evolution cycles
+  timestep: 0.01                        # Integration timestep
+
+  # Scaling configuration
+  scaling:
+    enabled: true
+    schedule: "power_law"               # Options: linear, power_law, exponential
+    min_nodes: 2000
+    max_nodes: 20000000
+    scaling_factor: 2.0
+
+# Hardware requirements
+hardware:
+  device: "auto"                        # Options: auto, cpu, cuda, cuda:0
+  min_memory_gb: 8                      # Minimum RAM/VRAM required
+  recommended_memory_gb: 16             # Recommended RAM/VRAM
+  precision: "float32"                  # Options: float32, float64, mixed
+
+  # Multi-GPU configuration
+  multi_gpu:
+    enabled: false
+    strategy: "data_parallel"           # Options: data_parallel, model_parallel
+    devices: [0, 1]
+
+# Validation criteria
+validation:
+  # Expected outcomes
+  targets:
+    vortex_density:
+      min: 0.70                         # Minimum acceptable density (70%)
+      target: 0.82                      # Target density (82%)
+      max: 1.00                         # Maximum density (100%)
+
+    vortex_quality:
+      min: 0.50
+      target: 0.75
+
+    reward:
+      min: 0.0
+      target: 3500.0
+
+    convergence_cycles:
+      max: 500                          # Should converge within 500 cycles
+
+  # Validation tests
+  tests:
+    - topology_validation               # Verify topology is correct
+    - parameter_bounds                  # Check parameters in valid ranges
+    - numerical_stability               # Check for NaN/Inf
+    - conservation_laws                 # Check topological charge conservation
+    - reproducibility                   # Same seed → same results
+
+# Monitoring configuration
+monitoring:
+  dashboard:
+    enabled: true
+    port: 8000
+    update_frequency: 1                 # Update every N cycles
+
+  metrics:
+    save_frequency: 10                  # Save metrics every N cycles
+    save_checkpoints: true
+    checkpoint_frequency: 100
+
+  logging:
+    level: "INFO"                       # Options: DEBUG, INFO, WARNING, ERROR
+    file: "data/results/{experiment}/training.log"
+
+# Output configuration
+output:
+  directory: "data/results/{experiment}"
+  save_final_state: true
+  save_trajectories: true               # Save parameter trajectories
+  generate_whitepaper: true             # Auto-generate whitepaper
+
+  # What to save
+  artifacts:
+    - checkpoint                        # Final model checkpoint
+    - metrics                           # JSON metrics file
+    - plots                             # Visualization plots
+    - whitepaper                        # PDF whitepaper
+    - config                            # Copy of this config
+
+# Reproducibility
+reproducibility:
+  random_seed: 42                       # Fixed seed for reproducibility
+  deterministic: true                   # Use deterministic algorithms
+  track_provenance: true                # Track git commit, hardware, etc.
