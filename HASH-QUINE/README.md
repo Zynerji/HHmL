@@ -258,6 +258,60 @@ This research is part of the open HHmL project. Contributions welcome:
 
 ---
 
+## 💰 Supporting Future Research
+
+**This work stands on its own scientific merit.** The hash quine discovery and rigorous negative result demonstrate HHmL's capability to generate novel emergent phenomena through glass-box methodology. All findings are published openly regardless of funding.
+
+That said, further exploration of recursive topological structures requires significant computational resources beyond what was used for this initial study (CPU, 10GB RAM, 581 seconds for largest trial).
+
+### Computational Needs for Extended Research
+
+**Proposed Next Steps:**
+1. **Large-Scale Testing**: 100K-1M nodes on NVIDIA H200 (currently limited to 10K nodes)
+   - Cost: ~$2-3/hour × 20-40 hours = **$40-120**
+   - Would reveal scaling behavior of hash quine emergence
+   - Test if patterns change at 10-100× larger lattices
+
+2. **Alternative Applications**: TSP, protein folding, SAT solving (where HHmL should excel)
+   - Cost: ~$50-100 for comprehensive testing
+   - **High probability of positive results** (continuous fitness landscapes)
+   - Would validate recursive topology for real optimization problems
+
+3. **Topology Comparison**: Möbius vs Torus vs Klein Bottle at scale
+   - Cost: ~$30-60 for parallel trials
+   - Determine if Möbius is uniquely suited for recursive structures
+
+4. **Mathematical Formalization**: Symbolic computation for hash quine proofs
+   - Cost: ~$20-40 for compute-intensive symbolic analysis
+
+**Total estimated cost for comprehensive follow-up research: ~$200-300**
+
+### Community Support
+
+If you'd like to support continued open-source research into holographic topological optimization and recursive Möbius structures:
+
+**Bitcoin**: `3JMxeigcY5FyZm6KUmP78Db1BUzpWgRAfW`
+
+### Transparency Commitment
+
+- ✅ **All funded research published openly** (same rigorous methodology as this work)
+- ✅ **Negative results shared** (we don't hide failures - see this paper!)
+- ✅ **Cloud compute receipts** available upon request
+- ✅ **No commercial exploitation** of community funds
+- ✅ **Complete code & data** for all experiments
+
+### Institutional Sponsorship
+
+Organizations like **Anthropic** (creators of Claude Code, which assisted in this research) or **cloud compute providers** interested in supporting open-source scientific exploration may also sponsor compute time. This work demonstrates novel applications of AI-assisted research and recursive topological methods.
+
+**For institutional sponsorship inquiries**: Open an issue on GitHub or contact [@Conceptual1](https://twitter.com/Conceptual1)
+
+---
+
+Thank you for supporting open science and rigorous exploration of emergent mathematical structures! 🙏
+
+---
+
 ## 📜 License
 
 This research is released under the MIT License (see root [`LICENSE`](../LICENSE) file).
