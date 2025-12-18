@@ -1,181 +1,471 @@
+<div align="center">
+
 # Holo-Harmonic Möbius Lattice (HHmL)
 
-**A Glass-Box Framework for Emergent Topological Phenomena Discovery**
-
-[![License](https://img.shields.io/badge/license-TBD-blue.svg)](LICENSE)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+### *A Glass-Box Framework for Emergent Topological Phenomena Discovery*
 
 ---
 
-> ### 📖 **Deep Dive: Complete Mathematical Documentation**
->
-> **For the full scientific treatment with mathematical framework, vector graphics, and comprehensive derivations:**
->
-> **[📄 Download README.pdf](README.pdf)** (11 pages, complete LaTeX documentation)
->
-> *Includes: Möbius strip parameterization, field dynamics equations, RNN architecture details, TikZ geometry visualizations, and peer-review quality mathematical rigor.*
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/r/hhml/hhml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+**Contact:** [@Conceptual1](https://twitter.com/Conceptual1) | [GitHub Issues](https://github.com/Zynerji/HHmL/issues)
+
+</div>
+
+---
+
+## 📖 Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Mathematical Framework](#mathematical-framework)
+- [Quick Start](#quick-start)
+- [Docker Deployment](#docker-deployment)
+- [Architecture](#architecture)
+- [Scientific Workflow](#scientific-workflow)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Citation](#citation)
+- [License](#license)
 
 ---
 
 ## Overview
 
-The Holo-Harmonic Möbius Lattice (HHmL) is a computational framework for investigating emergent phenomena in topologically non-trivial field configurations. By combining **Möbius strip topology** with **RNN-controlled parameter spaces**, HHmL enables systematic exploration of correlations between topological configurations and emergent vortex dynamics.
+The **Holo-Harmonic Möbius Lattice (HHmL)** is a computational research platform for investigating **emergent phenomena** in **topologically non-trivial field configurations**. By combining **Möbius strip topology** with **reinforcement learning-controlled parameter spaces**, HHmL enables systematic exploration of correlations between topological configurations and emergent vortex dynamics.
 
-### Key Features
+### What is HHmL?
 
-- 🎭 **Möbius Topology**: Closed-loop, boundary-free geometric structures
-- 🧠 **RNN Control**: 23 parameters autonomously optimized via reinforcement learning
-- 🔬 **Vortex Annihilation Control**: Selective pruning of low-quality vortices via RNN-controlled antivortex injection
-- 🔍 **Glass-Box Architecture**: Complete transparency for correlation tracking
-- 📊 **Reproducible Science**: Full parameter trajectories saved for peer review
-- ⚡ **Auto-Scaling**: CPU (2K nodes) → H200 GPU (20M+ nodes)
-- 📄 **Automated Reporting**: LaTeX whitepaper generation from results
+HHmL explores the mathematical question: *"How do topological constraints influence emergent field structures?"* By parameterizing field dynamics on Möbius strips (single-sided surfaces with 180° twist), the framework discovers novel resonance modes impossible in simple geometries.
+
+### What HHmL is NOT
+
+- ❌ A theory of fundamental physics
+- ❌ A model of quantum gravity or cosmology
+- ❌ A replacement for established physical theories
+
+**HHmL is a mathematical and computational research tool**, not a physical theory. All discoveries are emergent properties of the mathematical system, not claims about physical reality.
+
+---
+
+## Key Features
+
+### 🎭 Möbius Strip Topology
+
+<div align="center">
+
+*Closed-loop, boundary-free geometric structure with topological protection*
+
+</div>
+
+- **No Boundary Discontinuities**: 180° twist eliminates endpoint artifacts
+- **Topological Stability**: Single-sided surface stabilizes resonance modes
+- **Novel Harmonic Modes**: Unique eigenspectrum not present in trivial topologies
+- **Vortex Pinning**: Enhanced stability for phase singularities
+
+### 🧠 Glass-Box RNN Control
+
+<div align="center">
+
+*Complete transparency: Every parameter tracked, every decision explained*
+
+</div>
+
+HHmL's reinforcement learning system controls **23 parameters** across 7 categories:
+
+| Category | Count | Examples |
+|:---------|:-----:|:---------|
+| **Geometry** | 4 | κ (elongation), δ (triangularity), QEC layers, num_sites |
+| **Physics** | 4 | Damping, nonlinearity, amplitude variance, diffusion |
+| **Spectral** | 3 | ω (helical frequency), diffusion timestep, spectral weight |
+| **Sampling** | 3 | Sample ratio, neighbors, sparsity threshold |
+| **Mode** | 2 | Sparse density, spectral activation |
+| **Topology** | 3 | Winding density, twist rate, coupling strength |
+| **Annihilation** | 4 | Antivortex strength, radius, threshold, preserve ratio |
+
+**Every parameter trajectory is saved** → Full correlation analysis and reproducibility guaranteed.
+
+### 🔬 Vortex Annihilation Control *(Novel Capability)*
+
+<div align="center">
+
+*RNN-guided selective pruning of low-quality topological structures*
+
+</div>
+
+- **Quality Scoring**: Each vortex evaluated on neighborhood density, core depth, stability
+- **Selective Pruning**: Low-quality vortices removed while preserving high-quality structures
+- **Antivortex Injection**: Phase-inverted fields injected near problematic vortices
+- **Learned Optimization**: RNN discovers optimal curation strategies via reinforcement learning
+
+**Result**: Achieved **100% peak vortex density** (cycle 490) through autonomous quality control.
+
+### ⚡ Production-Ready Infrastructure
+
+- **Auto-Scaling**: CPU (2K nodes) → H200 GPU (20M+ nodes)
+- **Docker Integration**: Multi-stage builds, GPU support, orchestration via Docker Compose
+- **Live Monitoring**: Real-time web dashboard with interactive charts
+- **Automated Reporting**: LaTeX whitepaper generation with peer-review quality
+- **Reproducible Science**: Complete parameter logs, random seeds, hardware specs
+
+---
+
+## Mathematical Framework
+
+### Möbius Strip Parameterization
+
+The field dynamics evolve on a Möbius strip $\mathcal{M}$ parameterized by:
+
+$$
+\begin{aligned}
+x(u,v) &= \left(R + v\cos\frac{u}{2}\right)\cos u \\
+y(u,v) &= \left(R + v\cos\frac{u}{2}\right)\sin u \\
+z(u,v) &= v\sin\frac{u}{2}
+\end{aligned}
+\quad u \in [0, 2\pi), \; v \in [-w, w]
+$$
+
+where $R$ is the strip radius and $w$ is the half-width.
+
+### Field Dynamics
+
+The complex field $\psi: \mathcal{M} \times \mathbb{R}^+ \to \mathbb{C}$ obeys:
+
+$$
+\frac{\partial \psi}{\partial t} = -\gamma\psi + \lambda|\psi|^2\psi + \sum_{i=1}^{N} A_i \frac{\sin(k|r - r_i|)}{|r - r_i|} e^{i\phi_i}
+$$
+
+- $\gamma$: Damping coefficient (RNN-controlled)
+- $\lambda$: Nonlinearity strength (RNN-controlled)
+- $A_i$: Source amplitudes (RNN-controlled)
+- $\phi_i$: Source phases
+- $k$: Wavenumber
+
+### Topological Charge
+
+Vortices are characterized by winding number:
+
+$$
+n_v = \frac{1}{2\pi} \oint_{\partial\Omega} \nabla \arg(\psi) \cdot d\mathbf{l}
+$$
+
+where $\Omega$ is a small region around the vortex core.
+
+### Reinforcement Learning Objective
+
+The RNN maximizes:
+
+$$
+\mathcal{R} = \underbrace{\alpha_1 \rho_v}_{\text{density}} + \underbrace{\alpha_2 Q_v}_{\text{quality}} - \underbrace{\alpha_3 \sigma(\rho_v)}_{\text{uniformity}} + \underbrace{\alpha_4 \mathcal{S}}_{\text{spectral}} + \underbrace{\alpha_5 \mathcal{C}}_{\text{convergence}}
+$$
+
+where:
+- $\rho_v$: Vortex density
+- $Q_v$: Average vortex quality
+- $\sigma(\rho_v)$: Spatial variance (penalizes clustering)
+- $\mathcal{S}$: Spectral richness (peak count in $|\hat{\psi}(k)|^2$)
+- $\mathcal{C}$: Parameter convergence bonus
 
 ---
 
 ## Quick Start
 
-\`\`\`bash
+### Prerequisites
+
+- Python 3.12+
+- CUDA 12.1+ (for GPU support)
+- 8GB+ RAM (CPU mode) or 16GB+ VRAM (GPU mode)
+
+### Installation
+
+```bash
 # Clone repository
 git clone https://github.com/Zynerji/HHmL.git
 cd HHmL
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in development mode
+pip install -e .
 
-# Run training (auto-detects hardware)
-python scripts/train_multi_strip.py --cycles 100
+# Install with all optional dependencies
+pip install -e ".[dev,viz,docs]"
 
-# Generate whitepaper
-python web_monitor/whitepaper_generator.py
-\`\`\`
+# Verify installation
+python -c "import hhml; print(hhml.__version__)"
+```
+
+### Run Your First Simulation
+
+```bash
+# CPU training (2K nodes, 100 cycles)
+python examples/training/train_mobius_basic.py --cycles 100 --device cpu
+
+# GPU training (auto-detect CUDA)
+python examples/training/train_mobius_basic.py --cycles 500
+
+# Multi-strip topology (advanced)
+python examples/training/train_multi_strip.py --cycles 1000 --strips 2
+```
+
+### Monitor Training
+
+```bash
+# Start live dashboard (runs on http://localhost:8000)
+python -m hhml.monitoring.live_dashboard
+
+# Generate whitepaper from results
+python tools/whitepaper/whitepaper_generator.py --results data/results/latest
+```
 
 ---
 
-## What Makes HHmL Unique?
+## Docker Deployment
 
-### 1. Möbius Strip Topology
+### Quick Start with Docker
 
-Unlike traditional approaches using flat space or simple spheres, HHmL exploits Möbius strips:
+```bash
+# Build all images
+cd docker && ./scripts/build.sh all
 
-- **No Boundary Discontinuities**: 180° twist eliminates endpoint artifacts
-- **Topological Protection**: Single-sided surface stabilizes resonance modes
-- **Novel Harmonic Modes**: Unique to Möbius geometry
+# Run production training
+./scripts/run.sh production
 
-### 2. Glass-Box RNN Control
+# Run development environment (JupyterLab)
+./scripts/run.sh development
+```
 
-The RNN controls **23 parameters** across 7 categories:
+### Available Docker Images
 
-| Category | Parameters | Examples |
-|----------|-----------|----------|
-| **Geometry (4)** | Shape & structure | κ (elongation), δ (triangularity), QEC layers |
-| **Physics (4)** | Field dynamics | Damping, nonlinearity, amplitude variance |
-| **Spectral (3)** | Graph methods | ω (helical frequency), diffusion timestep |
-| **Sampling (3)** | Computational | Sample ratio, neighbors, sparsity |
-| **Mode (2)** | Method selection | Sparse density, spectral weight |
-| **Extended (3)** | Topology | Winding density, twist rate, coupling |
-| **Annihilation (4)** | Vortex pruning | Antivortex strength, annihilation radius, pruning threshold, preserve ratio |
+| Image | Purpose | Size | CUDA |
+|:------|:--------|:----:|:----:|
+| `hhml:cpu-latest` | CPU-only lightweight image | ~2GB | ❌ |
+| `hhml:cuda-latest` | H100/H200 production training | ~8GB | ✅ |
+| `hhml:dev-latest` | JupyterLab + dev tools | ~10GB | ✅ |
 
-**Every parameter is tracked every cycle** → Full correlation analysis possible.
+### Docker Compose Services
 
-### 3. Vortex Annihilation Control (Novel)
+```yaml
+# Production: Training + Monitoring
+docker-compose up -d
 
-HHmL features an RNN-controlled vortex annihilation system for selective quality-based pruning:
+# Development: JupyterLab + TensorBoard
+docker-compose -f docker-compose.dev.yml up -d
 
-- **Quality Scoring**: Each vortex scored on neighborhood density, core depth, and stability
-- **Selective Pruning**: RNN learns to remove low-quality vortices while preserving high-quality structures
-- **Antivortex Injection**: Phase-inverted fields injected near problematic vortices
-- **Learned Control**: RNN discovers optimal annihilation parameters via reinforcement learning
-  - `antivortex_strength`: How strong the antivortex field is (0-1)
-  - `annihilation_radius`: Spatial extent of annihilation zone (0.1-1.0)
-  - `pruning_threshold`: Quality below which vortices are targeted (0-1)
-  - `preserve_ratio`: Minimum vortex density to maintain (0.3-0.9)
+# Generate whitepaper (on-demand)
+docker-compose --profile tools run hhml-whitepaper
+```
 
-This enables **active vortex curation** - the system learns to maintain only high-quality topological structures.
+**Access Points:**
+- Monitoring Dashboard: http://localhost:8000
+- JupyterLab: http://localhost:8888
+- TensorBoard: http://localhost:6006
 
-### 4. Reproducible & Peer-Reviewable
+### H200 VM Deployment
 
-- ✅ Complete parameter trajectories saved
-- ✅ Random seeds and hardware specs logged
-- ✅ No hidden hyperparameters
-- ✅ Automated whitepaper generation
-- ✅ Open-source codebase
+```bash
+# SSH into H200
+ssh ivhl@89.169.111.28
+
+# Clone and build
+git clone https://github.com/Zynerji/HHmL.git
+cd HHmL/docker
+./scripts/build.sh cuda
+
+# Run 20M node training
+docker run --gpus all \
+  -v $(pwd)/data:/data \
+  hhml:cuda-latest \
+  python examples/training/train_mobius_basic.py \
+  --cycles 1000 --nodes 20000000
+```
+
+---
+
+## Architecture
+
+### Repository Structure
+
+```
+HHmL/
+├── src/hhml/               # Main Python package
+│   ├── core/               # Physics & topology modules
+│   │   ├── mobius/        # Möbius strip dynamics
+│   │   ├── resonance/     # Holographic resonance
+│   │   ├── gft/           # Group Field Theory
+│   │   └── tensor_networks/ # MERA holography
+│   ├── ml/                 # Machine learning
+│   │   ├── rl/            # Reinforcement learning
+│   │   └── training/      # Training loops
+│   ├── analysis/           # Data analysis
+│   │   └── dark_matter/   # Pruning theory
+│   ├── monitoring/         # Web dashboard
+│   └── utils/              # Shared utilities
+├── tests/                  # Test suite
+│   ├── unit/              # Unit tests
+│   ├── integration/       # Integration tests
+│   └── benchmarks/        # Performance benchmarks
+├── examples/               # Example scripts
+│   ├── training/          # Training examples
+│   └── analysis/          # Analysis examples
+├── docker/                 # Docker configuration
+│   ├── Dockerfile.{cpu,cuda,dev}
+│   ├── docker-compose.yml
+│   └── scripts/           # Helper scripts
+├── docs/                   # Documentation
+│   ├── guides/            # User guides
+│   ├── deployment/        # Deployment guides
+│   └── theory/            # Mathematical theory
+├── configs/                # Configuration files
+├── tools/                  # Development tools
+│   ├── whitepaper/        # Whitepaper generator
+│   └── benchmarking/      # Performance tools
+└── data/                   # Data directory (gitignored)
+    ├── checkpoints/       # Model checkpoints
+    ├── results/           # Training results
+    └── outputs/           # Generated outputs
+```
+
+### Module Overview
+
+| Module | Description | Key Files |
+|:-------|:------------|:----------|
+| `hhml.core.mobius` | Möbius strip geometry & dynamics | `mobius_training.py`, `optimized_sphere.py` |
+| `hhml.core.resonance` | Holographic boundary resonance | `holographic_resonance.py`, `vortex_controller.py` |
+| `hhml.ml.rl` | Reinforcement learning (TD3-SAC) | `td3_agent.py`, `sac_agent.py` |
+| `hhml.ml.training` | Training loops & checkpointing | `trainer.py`, `checkpoint_manager.py` |
+| `hhml.monitoring` | Live dashboard & visualization | `live_dashboard.py`, `streaming_server.py` |
+| `hhml.utils` | Hardware detection & validation | `hardware_config.py`, `startup_validator.py` |
 
 ---
 
 ## Scientific Workflow
 
-\`\`\`
-1. Run Simulation
-   └─> python scripts/train_multi_strip.py --cycles 100
+```mermaid
+graph LR
+    A[Configure Experiment] --> B[Run Training]
+    B --> C[Monitor Live Dashboard]
+    C --> D[Save Checkpoint]
+    D --> E{Continue?}
+    E -->|Yes| B
+    E -->|No| F[Generate Whitepaper]
+    F --> G[Analyze Correlations]
+    G --> H[Publish Results]
+```
 
-2. Results Saved
-   └─> test_cases/multi_strip/results/training_YYYYMMDD_HHMMSS.json
+### Step-by-Step
 
-3. Generate Whitepaper
-   └─> python web_monitor/whitepaper_generator.py
+1. **Configure Experiment**
+   ```bash
+   cp configs/example.yaml configs/my_experiment.yaml
+   # Edit configs/my_experiment.yaml
+   ```
 
-4. Whitepaper Created
-   └─> test_cases/multi_strip/whitepapers/multi_strip_YYYYMMDD_HHMMSS.pdf
+2. **Run Training**
+   ```bash
+   python examples/training/train_mobius_basic.py \
+     --config configs/my_experiment.yaml \
+     --cycles 1000
+   ```
 
-5. Analyze Correlations
-   └─> See RNN_PARAMETER_MAPPING.md for correlation analysis methods
-\`\`\`
+3. **Monitor Progress**
+   - Open http://localhost:8000 for live dashboard
+   - Watch real-time vortex density, quality, reward charts
 
----
+4. **Resume from Checkpoint**
+   ```bash
+   python examples/training/train_mobius_basic.py \
+     --resume data/checkpoints/agent_cycle500.pt \
+     --cycles 1500
+   ```
 
-## Repository Structure
+5. **Generate Analysis**
+   ```bash
+   python tools/whitepaper/whitepaper_generator.py \
+     --results data/results/my_experiment_*.json \
+     --output data/outputs/whitepapers/
+   ```
 
-\`\`\`
-HHmL/
-├── hhml/                      # Core Python package
-│   ├── mobius/               # Möbius-specific modules
-│   ├── resonance/            # Field dynamics
-│   ├── tensor_networks/      # MERA holography
-│   └── utils/                # Hardware config, validation
-├── scripts/                   # Training scripts
-│   └── train_multi_strip.py  # Main RNN training
-├── test_cases/               # Test configurations & results
-│   ├── multi_strip/
-│   │   ├── results/         # JSON simulation outputs
-│   │   └── whitepapers/     # Generated PDFs
-│   └── benchmarks/
-├── web_monitor/              # Whitepaper generation
-│   └── whitepaper_generator.py
-├── docs/                     # Documentation
-├── RNN_PARAMETER_MAPPING.md  # Parameter correlation guide
-├── CLAUDE.md                 # AI assistant context
-├── README.tex                # Full mathematical documentation
-└── README.md                 # This file
-\`\`\`
+6. **Analyze Correlations**
+   - See [RNN_PARAMETER_MAPPING.md](docs/guides/RNN_PARAMETER_MAPPING.md)
+   - Use correlation tracking methods to discover parameter-outcome relationships
 
 ---
 
 ## Documentation
 
-- **[README.tex](README.tex)**: Comprehensive mathematical framework (compile with LaTeX)
-- **[RNN_PARAMETER_MAPPING.md](RNN_PARAMETER_MAPPING.md)**: Complete guide to correlation tracking
-- **[CLAUDE.md](CLAUDE.md)**: Workflow expectations and development guide
-- **[H200_DEPLOYMENT.md](H200_DEPLOYMENT.md)**: Large-scale deployment guide
+| Document | Description |
+|:---------|:------------|
+| [**Installation Guide**](docs/guides/installation.md) | Detailed installation instructions |
+| [**User Guide**](docs/guides/user_guide.md) | Complete usage tutorial |
+| [**API Reference**](docs/guides/api_reference.md) | Python API documentation |
+| [**Docker Guide**](docs/deployment/docker.md) | Docker deployment guide |
+| [**H200 Deployment**](docs/deployment/h200.md) | H200 VM setup & scaling |
+| [**Mathematical Theory**](docs/theory/mathematical_framework.md) | Complete mathematical derivations |
+| [**RNN Parameters**](docs/guides/RNN_PARAMETER_MAPPING.md) | Parameter correlation analysis |
+| [**CLAUDE.md**](CLAUDE.md) | AI assistant context & workflows |
+
+### Example Notebooks
+
+- [Basic Training Tutorial](examples/notebooks/01_basic_training.ipynb)
+- [Parameter Tuning](examples/notebooks/02_parameter_tuning.ipynb)
+- [Vortex Analysis](examples/notebooks/03_vortex_analysis.ipynb)
+- [Scaling Studies](examples/notebooks/04_scaling_studies.ipynb)
 
 ---
 
-## Scientific Merit
+## Contributing
 
-### What HHmL Is
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- ✅ Computational research tool for emergent phenomena
-- ✅ Glass-box system for correlation discovery
-- ✅ Platform for reproducible topological field experiments
+### Development Setup
 
-### What HHmL Is NOT
+```bash
+# Clone repository
+git clone https://github.com/Zynerji/HHmL.git
+cd HHmL
 
-- ❌ Theory of fundamental physics
-- ❌ Model of quantum gravity or cosmology
-- ❌ Replacement for established physical theories
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
 
-**This is a mathematical and computational research platform, not a physical theory.**
+# Install pre-commit hooks
+pre-commit install
+
+# Run tests
+pytest tests/
+
+# Check code style
+black src/ tests/
+flake8 src/ tests/
+mypy src/
+```
+
+### Running Tests
+
+```bash
+# All tests
+pytest
+
+# Unit tests only
+pytest tests/unit/
+
+# Integration tests
+pytest tests/integration/
+
+# With coverage report
+pytest --cov=hhml --cov-report=html
+```
+
+### Code Quality
+
+This project follows strict code quality standards:
+
+- **Formatting**: [Black](https://black.readthedocs.io/) (line length 100)
+- **Linting**: [Flake8](https://flake8.pycqa.org/)
+- **Type Checking**: [MyPy](https://mypy.readthedocs.io/)
+- **Testing**: [Pytest](https://pytest.org/) (>90% coverage required)
 
 ---
 
@@ -183,28 +473,63 @@ HHmL/
 
 If you use HHmL in your research, please cite:
 
-\`\`\`bibtex
+```bibtex
 @software{hhml2025,
-  title = {Holo-Harmonic Möbius Lattice (HHmL): A Glass-Box Framework
-           for Emergent Topological Phenomena Discovery},
-  author = {HHmL Research Collective},
-  year = {2025},
-  url = {https://github.com/Zynerji/HHmL},
-  note = {Computational research platform for investigating emergent
-          phenomena in Möbius strip topologies}
+  title     = {Holo-Harmonic Möbius Lattice (HHmL): A Glass-Box Framework
+               for Emergent Topological Phenomena Discovery},
+  author    = {HHmL Research Collective},
+  year      = {2025},
+  version   = {0.1.0},
+  url       = {https://github.com/Zynerji/HHmL},
+  doi       = {10.5281/zenodo.XXXXXXX},
+  note      = {Computational research platform for investigating emergent
+               phenomena in Möbius strip topologies}
 }
-\`\`\`
+```
+
+### Publications
+
+*Publications using HHmL will be listed here.*
 
 ---
 
-## Contact
+## License
 
-- **GitHub**: [https://github.com/Zynerji/HHmL](https://github.com/Zynerji/HHmL)
-- **Issues**: [https://github.com/Zynerji/HHmL/issues](https://github.com/Zynerji/HHmL/issues)
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
+
+## Acknowledgments
+
+- **PyTorch Team**: For the deep learning framework
+- **NumPy/SciPy Communities**: For scientific computing tools
+- **Docker**: For containerization infrastructure
+- **Nebius**: For H200 GPU access
+
+---
+
+## Contact & Support
 
 <div align="center">
+
+**Primary Contact:** [@Conceptual1](https://twitter.com/Conceptual1)
+
+**GitHub:** [Zynerji/HHmL](https://github.com/Zynerji/HHmL)
+
+**Issues:** [GitHub Issues](https://github.com/Zynerji/HHmL/issues)
+
+**Discussions:** [GitHub Discussions](https://github.com/Zynerji/HHmL/discussions)
+
+---
+
+### Project Status
+
+![GitHub last commit](https://img.shields.io/github/last-commit/Zynerji/HHmL)
+![GitHub issues](https://img.shields.io/github/issues/Zynerji/HHmL)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/Zynerji/HHmL)
+![GitHub stars](https://img.shields.io/github/stars/Zynerji/HHmL?style=social)
+
+---
 
 **HHmL: Exploring emergent phenomena through topological field dynamics**
 

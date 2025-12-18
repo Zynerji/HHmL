@@ -1,3 +1,5 @@
+# HHmL Production .gitignore
+
 # Python
 __pycache__/
 *.py[cod]
@@ -16,44 +18,177 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+.pytest_cache/
+cover/
 
-# Virtual Environment
+# Virtual environments
+env/
 venv/
 ENV/
-env/
-.venv
+env.bak/
+venv.bak/
+.venv/
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*.swn
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Data and outputs (critical - don't commit large files)
+data/
+results/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.tar.gz
+*.zip
+
+# Logs
+*.log
+logs/
+training_*.log
+
+# LaTeX intermediate files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.dvi
+*.ps
+*.pdf
+*.tex~
+
+# Documentation builds
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# Testing
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# Docker
+docker-compose.override.yml
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# Archives
+/*.tar.gz
+/*.zip
+/*.tar
+/*.rar
+
+# Configuration (don't commit sensitive configs)
+*.env
+.env
+.env.local
+.env.*.local
+config.local.yaml
+secrets.yaml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Streamlit
 .streamlit/
 
-# Generated outputs
-reports/
-whitepapers/report_*/
-checkpoints/*.pt
-checkpoints/*.pth
-logs/*.log
-*.png
-*.jpg
-*.pdf
-*.aux
-*.log
-*.out
-*.toc
+# Whitepaper outputs (generated)
+whitepapers/*.pdf
+test_cases/*/whitepapers/*.pdf
+tools/whitepaper/output/
 
-# Checkpoint files
-checkpoints/**/*.pt
+# Benchmark results
+benchmarks/results/
+test_cases/benchmarks/results/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Allow specific important files
+!.gitignore
+!.dockerignore
+!.editorconfig
+!.github/

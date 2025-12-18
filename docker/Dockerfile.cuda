@@ -1,0 +1,83 @@
+# HHmL CUDA Dockerfile - Optimized for H100/H200 GPUs
+# Multi-stage build for production deployment
+
+# Stage 1: Builder
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04 AS builder
+
+# Set non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python3.12 -m pip install --upgrade pip setuptools wheel
+
+# Copy requirements first for layer caching
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch with CUDA support
+RUN pip install --no-cache-dir \
+    torch==2.2.0 \
+    torchvision==0.17.0 \
+    torchaudio==2.2.0 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# Stage 2: Runtime
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    CUDA_HOME=/usr/local/cuda \
+    PATH=/usr/local/cuda/bin:${PATH} \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    python3.12 \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Create non-root user
+RUN useradd -m -u 1000 hhml && \
+    mkdir -p /workspace /data && \
+    chown -R hhml:hhml /workspace /data
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy application code
+COPY --chown=hhml:hhml . .
+
+# Install HHmL package
+RUN pip install --no-cache-dir -e .
+
+# Switch to non-root user
+USER hhml
+
+# Expose ports
+EXPOSE 8000 8888
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import torch; assert torch.cuda.is_available()" || exit 1
+
+# Default command
+CMD ["python3", "examples/training/train_mobius_basic.py"]

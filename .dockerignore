@@ -1,0 +1,81 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Data and results (mount as volumes instead)
+data/
+results/
+checkpoints/
+outputs/
+*.pt
+*.pth
+*.ckpt
+*.tar.gz
+*.zip
+
+# Logs
+*.log
+training_*.log
+
+# Documentation build artifacts
+docs/_build/
+*.aux
+*.out
+*.toc
+*.pdf
+*.tex
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+Dockerfile*
+
+# Archive
+archive/
+
+# Test outputs
+test_cases/*/results/
+test_cases/*/whitepapers/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# LaTeX intermediate files
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# OS files
+Thumbs.db
+.DS_Store

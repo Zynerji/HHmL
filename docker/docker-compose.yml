@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Main training service with GPU support
+  hhml-training:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cuda
+    image: hhml:cuda-latest
+    container_name: hhml-training
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - HHML_CONFIG=/workspace/configs/production.yaml
+    volumes:
+      - ../data:/data
+      - ../configs:/workspace/configs:ro
+      - training-results:/workspace/results
+    networks:
+      - hhml-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    command: ["python3", "examples/training/train_mobius_basic.py", "--config", "/workspace/configs/production.yaml"]
+
+  # Web monitoring dashboard
+  hhml-monitor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cpu
+    image: hhml:cpu-latest
+    container_name: hhml-monitor
+    ports:
+      - "8000:8000"
+    environment:
+      - HHML_MONITOR_PORT=8000
+      - HHML_RESULTS_DIR=/data/results
+    volumes:
+      - ../data:/data:ro
+      - monitoring-data:/workspace/monitoring
+    networks:
+      - hhml-network
+    depends_on:
+      - hhml-training
+    restart: unless-stopped
+    command: ["python3", "-m", "hhml.monitoring.live_dashboard"]
+
+  # Whitepaper generator (runs on-demand)
+  hhml-whitepaper:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cpu
+    image: hhml:cpu-latest
+    container_name: hhml-whitepaper
+    environment:
+      - HHML_RESULTS_DIR=/data/results
+      - HHML_OUTPUT_DIR=/data/outputs/whitepapers
+    volumes:
+      - ../data:/data
+    networks:
+      - hhml-network
+    profiles:
+      - tools
+    command: ["python3", "tools/whitepaper/whitepaper_generator.py"]
+
+volumes:
+  training-results:
+    driver: local
+  monitoring-data:
+    driver: local
+
+networks:
+  hhml-network:
+    driver: bridge

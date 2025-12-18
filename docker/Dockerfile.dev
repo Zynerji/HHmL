@@ -1,0 +1,87 @@
+# HHmL Development Dockerfile - Full development environment with JupyterLab
+# Includes all dev tools, debuggers, and interactive environment
+
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    CUDA_HOME=/usr/local/cuda \
+    PATH=/usr/local/cuda/bin:${PATH} \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+
+# Install system dependencies and dev tools
+RUN apt-get update && apt-get install -y \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
+    git \
+    vim \
+    nano \
+    htop \
+    tmux \
+    build-essential \
+    wget \
+    curl \
+    ssh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN python3.12 -m pip install --upgrade pip setuptools wheel
+
+# Install development dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt && \
+    pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
+        --index-url https://download.pytorch.org/whl/cu121
+
+# Install development tools
+RUN pip install \
+    jupyterlab \
+    ipython \
+    ipdb \
+    pytest \
+    pytest-cov \
+    black \
+    flake8 \
+    mypy \
+    pre-commit \
+    tensorboard
+
+# Create non-root user with sudo access
+RUN useradd -m -u 1000 -s /bin/bash hhml && \
+    apt-get update && apt-get install -y sudo && \
+    echo "hhml ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /workspace /data && \
+    chown -R hhml:hhml /workspace /data
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy application code
+COPY --chown=hhml:hhml . .
+
+# Install HHmL in editable mode
+RUN pip install -e .
+
+# Switch to non-root user
+USER hhml
+
+# Configure JupyterLab
+RUN jupyter lab --generate-config && \
+    echo "c.ServerApp.ip = '0.0.0.0'" >> ~/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.allow_root = False" >> ~/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.open_browser = False" >> ~/.jupyter/jupyter_lab_config.py
+
+# Expose ports (JupyterLab, monitoring dashboard, tensorboard)
+EXPOSE 8888 8000 6006
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import torch; assert torch.cuda.is_available()" || exit 1
+
+# Default command - JupyterLab
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser"]

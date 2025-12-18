@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Development environment with JupyterLab
+  hhml-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: hhml:dev-latest
+    container_name: hhml-dev
+    runtime: nvidia
+    ports:
+      - "8888:8888"  # JupyterLab
+      - "8000:8000"  # Monitoring dashboard
+      - "6006:6006"  # TensorBoard
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - JUPYTER_ENABLE_LAB=yes
+      - HHML_ENV=development
+    volumes:
+      # Mount source code for live editing
+      - ../src:/workspace/src
+      - ../examples:/workspace/examples
+      - ../tests:/workspace/tests
+      - ../configs:/workspace/configs
+      - ../docs:/workspace/docs
+      # Mount data directory
+      - ../data:/data
+      # Cache Python packages
+      - dev-pip-cache:/home/hhml/.cache/pip
+    networks:
+      - hhml-dev-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+
+  # TensorBoard for training visualization
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: hhml-tensorboard
+    ports:
+      - "6007:6006"
+    volumes:
+      - ../data/results:/logs:ro
+    networks:
+      - hhml-dev-network
+    command: ["tensorboard", "--logdir=/logs", "--host=0.0.0.0", "--port=6006"]
+    profiles:
+      - monitoring
+
+volumes:
+  dev-pip-cache:
+    driver: local
+
+networks:
+  hhml-dev-network:
+    driver: bridge

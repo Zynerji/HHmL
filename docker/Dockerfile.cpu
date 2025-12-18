@@ -1,0 +1,49 @@
+# HHmL CPU Dockerfile - Lightweight CPU-only image
+# For development and testing without GPU
+
+FROM python:3.12-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 hhml && \
+    mkdir -p /workspace /data && \
+    chown -R hhml:hhml /workspace /data
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Copy application code
+COPY --chown=hhml:hhml . .
+
+# Install HHmL package
+RUN pip install -e .
+
+# Switch to non-root user
+USER hhml
+
+# Expose ports
+EXPOSE 8000 8888
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import hhml; print('OK')" || exit 1
+
+# Default command
+CMD ["python3", "examples/training/train_mobius_basic.py", "--device", "cpu"]
