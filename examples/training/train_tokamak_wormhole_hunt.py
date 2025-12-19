@@ -346,9 +346,13 @@ def train_tokamak_wormhole_hunt(args):
 
     # Initialize RNN controller (39 parameters)
     print("Initializing RNN controller...")
+
+    # Scale hidden_dim based on number of cycles (maximize VRAM for long runs)
+    hidden_dim = 16384 if args.num_cycles >= 100 else 4096
+
     rnn = SpatiotemporalRNN(
         state_dim=10,  # State features (2 global + 8 per-strip samples)
-        hidden_dim=4096,  # Large hidden state for complex dynamics
+        hidden_dim=hidden_dim,  # Scales with run length for optimal VRAM usage
         device=device
     )
 
