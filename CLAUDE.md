@@ -1318,23 +1318,87 @@ This section documents all errors encountered during HHmL development and their 
 
 ### 1. Unicode Encoding Errors (Windows CP1252)
 
-**Error**: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`
+**Error**: `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'` (or '\u2192', '\u221e', etc.)
 
-**Cause**: Windows console uses CP1252 encoding by default, cannot display Unicode characters like ✓ (U+2713), ✗ (U+2717), × (U+00D7)
+**Cause**: Windows console uses CP1252 encoding by default, cannot display Unicode characters. Python 3.14+ print() attempts to encode to console encoding, causing crashes with any non-ASCII characters.
 
 **Locations Affected**:
 - `run_optimized_3min.py`
 - `optimized_sphere.py`
 - `generate_pdf_report.py`
 - `test_mobius_minimal.py`
+- `black_hole_nonce_miner.py`
+- `recursive_singularity_miner.py`
+- Any script with print() statements containing Unicode
 
-**Solution**:
-Replace all Unicode characters with ASCII equivalents:
-- `✓` → `[OK]`
-- `✗` → `[FAIL]` or `[WARNING]`
-- `×` → `x`
+**Common Unicode Characters to Avoid**:
 
-**Prevention**: Always use ASCII-only characters for terminal output on Windows. Use UTF-8 only in file writes with explicit `encoding='utf-8'`.
+**Symbols:**
+- `✓` (U+2713 CHECK MARK) → `[OK]` or `[SUCCESS]`
+- `✗` (U+2717 BALLOT X) → `[FAIL]` or `[WARNING]`
+- `×` (U+00D7 MULTIPLICATION) → `x`
+- `·` (U+00B7 MIDDLE DOT) → `*`
+
+**Math Symbols:**
+- `→` (U+2192 RIGHTWARDS ARROW) → `->`
+- `↔` (U+2194 LEFT RIGHT ARROW) → `<->`
+- `∞` (U+221E INFINITY) → `infinity`
+- `≈` (U+2248 ALMOST EQUAL) → `~=` or `approx`
+- `≥` (U+2265 GREATER-THAN OR EQUAL) → `>=`
+- `≤` (U+2264 LESS-THAN OR EQUAL) → `<=`
+- `±` (U+00B1 PLUS-MINUS) → `+/-`
+
+**Superscripts/Subscripts:**
+- `²` (U+00B2 SUPERSCRIPT TWO) → `^2`
+- `³` (U+00B3 SUPERSCRIPT THREE) → `^3`
+- `ⁿ` (U+207F SUPERSCRIPT N) → `^n`
+- `₁` (U+2081 SUBSCRIPT ONE) → `_1`
+
+**Greek Letters (if in print statements):**
+- `π` (U+03C0 GREEK SMALL LETTER PI) → `pi`
+- `θ` (U+03B8 GREEK SMALL LETTER THETA) → `theta`
+- `λ` (U+03BB GREEK SMALL LETTER LAMBDA) → `lambda`
+- `ħ` (U+0127 LATIN SMALL LETTER H WITH STROKE) → `h_bar`
+
+**Solution - Quick Fix with sed:**
+```bash
+# Replace all common Unicode symbols at once
+sed -i 's/✓/[OK]/g; s/✗/[FAIL]/g; s/×/x/g; s/·/*/g; s/→/->/g; s/↔/<->/g; s/∞/infinity/g; s/≈/~=/g; s/≥/>=/g; s/≤/<=/g; s/±/+\/-/g; s/²/^2/g; s/³/^3/g' file.py
+```
+
+**Solution - Manual Replacement:**
+Search for any of these patterns in print() statements and f-strings, replace with ASCII equivalents.
+
+**Prevention Rules:**
+1. ✅ **DO**: Use ASCII-only in ALL print() statements and console output
+2. ✅ **DO**: Use Unicode in file writes with explicit `encoding='utf-8'`
+3. ✅ **DO**: Use Unicode in comments (safe, not executed)
+4. ❌ **DON'T**: Use Unicode in f-strings that go to print()
+5. ❌ **DON'T**: Use Unicode in error messages
+6. ❌ **DON'T**: Use Unicode in logging output
+
+**Detection:**
+Search for Unicode before running:
+```bash
+# Find Unicode characters in Python files
+grep -n "→\|↔\|∞\|≈\|×\|·\|²\|³\|✓\|✗" file.py
+```
+
+**Safe Uses of Unicode:**
+```python
+# SAFE - Comments
+# This computes S = A/(4ℓ_P²) → horizon entropy
+
+# SAFE - File writes with UTF-8
+with open('report.txt', 'w', encoding='utf-8') as f:
+    f.write("Energy: 125 GeV ± 2 GeV")
+
+# UNSAFE - Print to console (Windows crash)
+print(f"w → ∞ simulates curvature")  # CRASHES
+
+# SAFE - ASCII version
+print(f"w -> infinity simulates curvature")  # WORKS
+```
 
 ---
 
@@ -1551,16 +1615,62 @@ metrics['rewards'].append(reward if isinstance(reward, float) else reward.item()
 
 ---
 
+### 10. NumPy log2/log10 AttributeError with Python Integers
+
+**Error**: `AttributeError: 'int' object has no attribute 'log2'` or `TypeError: loop of ufunc does not support argument 0 of type int which has no callable log2 method`
+
+**Cause**: NumPy's `np.log2()`, `np.log10()`, etc. expect numeric types (float, np.ndarray), but Python `int` type doesn't have `.log2()` method. When passing Python integers to numpy log functions, numpy tries to call the method on the integer, which fails.
+
+**Locations Affected**:
+- `black_hole_nonce_miner.py` test_nonce_quality()
+- Any code using numpy log functions with integer hash values
+- Bitcoin mining scripts converting hash bytes to integers
+
+**Solution**:
+```python
+# WRONG - passes Python int directly
+hash_int = int.from_bytes(hash_result, 'big')  # Python int
+proximity = abs(np.log2(hash_int) - np.log2(self.target))  # FAILS
+
+# CORRECT - convert to float first
+hash_int = int.from_bytes(hash_result, 'big')
+proximity = abs(np.log2(float(hash_int)) - np.log2(float(self.target)))  # WORKS
+
+# ALTERNATIVE - use math.log2 for scalars
+import math
+proximity = abs(math.log2(hash_int) - math.log2(self.target))  # Also works
+```
+
+**Explanation**:
+- `np.log2(int)` tries to call `int.log2()` which doesn't exist
+- `np.log2(float)` works because numpy can convert float to array
+- `math.log2(int)` works because it's designed for scalars
+
+**Prevention**:
+1. Always convert Python integers to floats before numpy log operations
+2. Use `math.log2()` for scalar operations instead of `np.log2()`
+3. Reserve numpy functions for arrays, use math module for scalars
+
+**Detection**:
+```bash
+# Find potential issues
+grep -n "np\.log.*int\|np\.log2.*int\|np\.log10.*int" file.py
+```
+
+---
+
 ### Summary of Prevention Best Practices
 
-1. **Windows Compatibility**: Use ASCII-only for terminal output
+1. **Windows Compatibility**: Use ASCII-only for terminal output (no Unicode symbols: → ∞ × ² etc.)
 2. **PyTorch Version Checks**: Always provide fallbacks for version-dependent features
-3. **JSON Serialization**: Wrap NumPy types with native Python types
+3. **JSON Serialization**: Wrap NumPy types with native Python types (int(), float(), bool())
 4. **LaTeX Special Characters**: Escape %, $, &, #, _, {}, ^, ~, \
 5. **File Encoding**: Always specify `encoding='utf-8'` for text files
 6. **String Concatenation**: Wrap ternary operators in parentheses
 7. **Type Checking**: Verify types before calling type-specific methods (.item(), .numpy(), etc.)
 8. **Performance Parameters**: Fix expensive structural parameters when optimizing
+9. **NumPy Log Functions**: Convert Python integers to floats before numpy log operations
+10. **Quick Unicode Detection**: Run `grep -n "→\|↔\|∞\|≈\|×\|·\|²\|³\|✓\|✗" file.py` before testing
 
 ---
 
