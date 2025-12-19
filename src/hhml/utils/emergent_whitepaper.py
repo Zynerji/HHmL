@@ -571,7 +571,7 @@ We have reported the discovery of {name}, a {status} emergent phenomenon in the 
 
 This discovery demonstrates the HHmL framework's capability for autonomous emergent phenomena discovery and provides a template for systematic exploration of topological field dynamics.
 
-\textbf{{Novelty Assessment}}: {"This phenomenon is classified as NOVEL based on verification score $\geq$ 0.5 and exhibits mathematical patterns similar to real-world physics." if is_novel else "This phenomenon requires additional validation before novelty classification."}
+\textbf{{Novelty Assessment}}: {"This phenomenon is classified as NOVEL based on verification score $\\geq$ 0.5 and exhibits mathematical patterns similar to real-world physics." if is_novel else "This phenomenon requires additional validation before novelty classification."}
 
 """
 
