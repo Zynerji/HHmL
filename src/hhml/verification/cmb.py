@@ -222,6 +222,10 @@ class CMBVerification:
             logger.warning("healpy not installed - using simplified FFT-based spectrum")
 
             # Simplified 1D power spectrum
+            # Convert complex field to real (rfft requires real input)
+            if np.iscomplexobj(field_values):
+                field_values = np.abs(field_values)
+
             fft = np.fft.rfft(field_values)
             cl_sim = np.abs(fft) ** 2
             ells = np.arange(len(cl_sim))
