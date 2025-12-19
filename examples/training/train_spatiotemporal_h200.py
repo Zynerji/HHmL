@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-Spatiotemporal Möbius Training - Basic Example
-==============================================
+Spatiotemporal Möbius Training - H200 Optimized
+===============================================
 
-Demonstrates (2+1)D spatiotemporal Möbius framework with:
-- Spatial Möbius strip (θ dimension)
-- Temporal Möbius loop (t dimension)
-- Forward/backward evolution with retrocausal coupling
-- RNN control of 32 parameters (23 spatial + 9 temporal)
-- Temporal fixed point convergence
-
-Goal: Achieve high temporal fixed point percentage (90-100%)
-      while maintaining vortex quality on spatial manifold.
+H200-optimized version for large-scale spatiotemporal training:
+- 4K-20K nodes (optimized for H200 memory)
+- 50-100 time steps
+- 100-1000 cycles
+- Mixed precision training (FP16)
+- Gradient accumulation
+- Optimized batch processing
 
 Author: tHHmL Project (Spatiotemporal Mobius Lattice)
 Date: 2025-12-18
@@ -41,18 +39,35 @@ from hhml.ml.training.spatiotemporal_rnn import SpatiotemporalRNN
 def parse_args():
     """Parse command-line arguments."""
     import argparse
-    parser = argparse.ArgumentParser(description='Spatiotemporal Möbius Training')
+    parser = argparse.ArgumentParser(description='Spatiotemporal Möbius Training (H200)')
 
+    # Scale parameters
     parser.add_argument('--num-nodes', type=int, default=4000,
-                       help='Number of spatial nodes')
+                       help='Number of spatial nodes (default: 4000, H200: up to 20000)')
     parser.add_argument('--num-time-steps', type=int, default=50,
-                       help='Number of temporal steps')
+                       help='Number of temporal steps (default: 50, H200: up to 100)')
     parser.add_argument('--num-cycles', type=int, default=100,
-                       help='Training cycles')
+                       help='Training cycles (default: 100, H200: up to 1000)')
+
+    # Optimization parameters
+    parser.add_argument('--learning-rate', type=float, default=1e-4,
+                       help='Learning rate')
+    parser.add_argument('--gradient-accumulation-steps', type=int, default=1,
+                       help='Gradient accumulation steps (H200: 4-8)')
+    parser.add_argument('--use-amp', action='store_true',
+                       help='Use automatic mixed precision (FP16)')
+
+    # Hardware
     parser.add_argument('--device', type=str, default='cuda',
                        help='Device (cuda or cpu)')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed')
+
+    # Checkpointing
+    parser.add_argument('--checkpoint-every', type=int, default=50,
+                       help='Save checkpoint every N cycles')
+    parser.add_argument('--resume', type=str, default=None,
+                       help='Resume from checkpoint path')
 
     return parser.parse_args()
 
@@ -62,36 +77,17 @@ def compute_reward(
     temporal_fixed_pct: float,
     divergence: float
 ) -> torch.Tensor:
-    """
-    Compute reward for current spatiotemporal state.
-
-    Components:
-    1. Temporal fixed points: Reward high percentage of self-consistent time steps
-    2. Convergence: Reward low divergence between forward/backward
-    3. Field stability: Penalize wild oscillations
-
-    Args:
-        spacetime: Current spatiotemporal state
-        temporal_fixed_pct: Percentage of temporal fixed points (0-100)
-        divergence: Forward-backward divergence
-
-    Returns:
-        reward: Torch tensor reward value (for backprop)
-    """
-    # Target: 90%+ temporal fixed points
+    """Compute reward with gradient tracking."""
     fixed_point_reward = 100.0 * (temporal_fixed_pct / 100.0)
 
-    # Convergence reward (handle NaN divergence)
     if np.isnan(divergence) or divergence > 1e6:
-        convergence_reward = -1000.0  # Large penalty for numerical instability
+        convergence_reward = -1000.0
     else:
         convergence_reward = 50.0 * np.exp(-0.1 * min(divergence, 100.0))
 
-    # Field stability (penalize high field magnitudes)
     field_mag_forward = torch.mean(torch.abs(spacetime.field_forward))
     field_mag_backward = torch.mean(torch.abs(spacetime.field_backward))
 
-    # Convert to tensor for gradient tracking
     stability_penalty = -10.0 * torch.clamp(field_mag_forward - 1.0, min=0) \
                         -10.0 * torch.clamp(field_mag_backward - 1.0, min=0)
 
@@ -105,53 +101,38 @@ def temporal_loop_iteration(
     evolver: TemporalEvolver,
     coupler: RetrocausalCoupler,
     params: dict,
-    max_iterations: int = 50
+    max_iterations: int = 50,
+    verbose: bool = False
 ) -> tuple:
-    """
-    Run one temporal loop iteration to convergence.
-
-    Alternates forward/backward evolution with retrocausal coupling
-    until temporal fixed points emerge.
-
-    Args:
-        spacetime: Spatiotemporal Möbius strip
-        evolver: Temporal evolution dynamics
-        coupler: Retrocausal coupling
-        params: RNN parameters (32 total)
-        max_iterations: Maximum convergence iterations
-
-    Returns:
-        final_divergence, num_fixed_points, pct_fixed: Convergence metrics
-    """
-    # Extract temporal parameters from RNN output with numerical stability
-    spatial_coupling = float(params['kappa'].detach()) * 0.001  # Scale down for stability
-    temporal_coupling = float(params['lambda'].detach()) * 0.001  # Scale down for stability
+    """Run temporal loop iteration to convergence."""
+    spatial_coupling = float(params['kappa'].detach()) * 0.001
+    temporal_coupling = float(params['lambda'].detach()) * 0.001
 
     for iter_idx in range(max_iterations):
-        # Forward sweep: t=0 → t=T
+        # Forward sweep
         spacetime.field_forward = evolver.full_forward_sweep(
             spacetime.field_forward,
             spatial_coupling,
             temporal_coupling
         )
 
-        # Backward sweep: t=T → t=0
+        # Backward sweep
         spacetime.field_backward = evolver.full_backward_sweep(
             spacetime.field_backward,
             spatial_coupling,
             temporal_coupling
         )
 
-        # Apply retrocausal coupling
+        # Retrocausal coupling
         spacetime.field_forward, spacetime.field_backward = coupler.apply_coupling(
             spacetime.field_forward,
             spacetime.field_backward,
             enable_mixing=True,
-            enable_swapping=(iter_idx % 5 == 0),  # Swap every 5 iterations
+            enable_swapping=(iter_idx % 5 == 0),
             enable_anchoring=True
         )
 
-        # Apply Möbius boundary conditions
+        # Möbius boundary conditions
         spacetime.field_forward = spacetime.apply_spatial_mobius_bc(spacetime.field_forward)
         spacetime.field_forward = spacetime.apply_temporal_mobius_bc(spacetime.field_forward)
         spacetime.field_backward = spacetime.apply_spatial_mobius_bc(spacetime.field_backward)
@@ -161,41 +142,52 @@ def temporal_loop_iteration(
         divergence = spacetime.compute_divergence()
         num_fixed, pct_fixed = spacetime.compute_temporal_fixed_points()
 
-        if iter_idx % 10 == 0:
+        if verbose and iter_idx % 10 == 0:
             print(f"    Iteration {iter_idx}: divergence={divergence:.6f}, fixed={pct_fixed:.1f}%")
 
-        # Converged if divergence low and high fixed point percentage
         if divergence < 0.01 and pct_fixed > 90.0:
-            print(f"    Converged at iteration {iter_idx}")
+            if verbose:
+                print(f"    Converged at iteration {iter_idx}")
             break
 
     return divergence, num_fixed, pct_fixed
 
 
 def main():
-    """Run spatiotemporal training."""
+    """Run H200-optimized spatiotemporal training."""
     args = parse_args()
 
     print("="*80)
-    print("SPATIOTEMPORAL MÖBIUS TRAINING")
+    print("SPATIOTEMPORAL MOBIUS TRAINING (H200 OPTIMIZED)")
     print("="*80)
     print()
+
+    # Check GPU
+    if args.device == 'cuda' and not torch.cuda.is_available():
+        print("CUDA not available, falling back to CPU")
+        args.device = 'cpu'
+
+    if args.device == 'cuda':
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+        print()
 
     # Set seed
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
+    if args.device == 'cuda':
+        torch.cuda.manual_seed(args.seed)
 
-    # Initialize spatiotemporal Möbius strip
+    # Initialize components
     print("Initializing (2+1)D Spatiotemporal Möbius...")
     spacetime = SpatiotemporalMobiusStrip(
         num_nodes=args.num_nodes,
         num_time_steps=args.num_time_steps,
-        temporal_twist=np.pi,  # 180° temporal twist
+        temporal_twist=np.pi,
         device=args.device
     )
     print()
 
-    # Initialize temporal dynamics
     evolver = TemporalEvolver(
         num_nodes=args.num_nodes,
         num_time_steps=args.num_time_steps,
@@ -204,7 +196,6 @@ def main():
     )
     print()
 
-    # Initialize retrocausal coupling
     coupler = RetrocausalCoupler(
         num_nodes=args.num_nodes,
         num_time_steps=args.num_time_steps,
@@ -214,15 +205,32 @@ def main():
     )
     print()
 
-    # Initialize RNN (32 parameters)
     print("Initializing Spatiotemporal RNN (32 parameters)...")
     rnn = SpatiotemporalRNN(
         state_dim=256,
         hidden_dim=4096,
         device=args.device
     )
-    optimizer = torch.optim.Adam(rnn.parameters(), lr=1e-4)
+    optimizer = torch.optim.AdamW(rnn.parameters(), lr=args.learning_rate, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_cycles)
     print()
+
+    # Mixed precision scaler
+    scaler = torch.cuda.amp.GradScaler() if args.use_amp and args.device == 'cuda' else None
+    if scaler:
+        print("Mixed precision training enabled (FP16)")
+        print()
+
+    # Resume from checkpoint
+    start_cycle = 0
+    if args.resume:
+        print(f"Resuming from checkpoint: {args.resume}")
+        checkpoint = torch.load(args.resume)
+        rnn.load_state_dict(checkpoint['rnn_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_cycle = checkpoint.get('cycle', 0) + 1
+        print(f"Resuming from cycle {start_cycle}")
+        print()
 
     # Training loop
     print("="*80)
@@ -234,63 +242,108 @@ def main():
         'divergences': [],
         'fixed_point_percentages': [],
         'rewards': [],
+        'losses': [],
         'temporal_parameters': []
     }
 
-    for cycle in range(args.num_cycles):
+    start_time = time.time()
+
+    for cycle in range(start_cycle, args.num_cycles):
+        cycle_start = time.time()
+
         print(f"Cycle {cycle+1}/{args.num_cycles}")
 
         # Self-consistent initialization
         spacetime.initialize_self_consistent(seed=args.seed + cycle)
 
-        # Get current state
+        # Forward pass with optional AMP
         state_tensor = spacetime.get_state_tensor()
-        state_input = state_tensor.unsqueeze(0).unsqueeze(0)  # (1, 1, state_dim)
+        state_input = state_tensor.unsqueeze(0).unsqueeze(0)
 
-        # RNN forward pass
-        params, _ = rnn(state_input)
-        params_rescaled = rnn.rescale_parameters(params)
+        with torch.cuda.amp.autocast() if scaler else torch.nullcontext():
+            params, _ = rnn(state_input)
+            params_rescaled = rnn.rescale_parameters(params)
 
-        # Run temporal loop to convergence
+        # Temporal loop iteration
         divergence, num_fixed, pct_fixed = temporal_loop_iteration(
-            spacetime, evolver, coupler, params_rescaled, max_iterations=50
+            spacetime, evolver, coupler, params_rescaled,
+            max_iterations=50,
+            verbose=(cycle % 10 == 0)
         )
 
-        # Compute reward (detached from graph for logging)
+        # Compute reward and loss
         reward_value = compute_reward(spacetime, pct_fixed, divergence).item()
-
-        # Use RNN value prediction for training (has gradients)
         value_prediction = params['value']
-
-        # Compute temporal fixed point target (what we want to achieve)
         target_value = torch.tensor(pct_fixed / 100.0, dtype=torch.float32, device=spacetime.device)
-
-        # Loss: MSE between predicted value and target (maximize fixed points)
         loss = torch.nn.functional.mse_loss(value_prediction, target_value)
 
-        # Update RNN
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        # Backward pass with gradient accumulation
+        if scaler:
+            scaler.scale(loss / args.gradient_accumulation_steps).backward()
+            if (cycle + 1) % args.gradient_accumulation_steps == 0:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+        else:
+            (loss / args.gradient_accumulation_steps).backward()
+            if (cycle + 1) % args.gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+
+        scheduler.step()
 
         # Log metrics
         metrics_history['divergences'].append(divergence)
         metrics_history['fixed_point_percentages'].append(pct_fixed)
         metrics_history['rewards'].append(reward_value)
+        metrics_history['losses'].append(loss.item())
         metrics_history['temporal_parameters'].append({
             'temporal_twist': float(params_rescaled['temporal_twist'].detach()),
             'retrocausal_strength': float(params_rescaled['retrocausal_strength'].detach()),
             'temporal_relaxation': float(params_rescaled['temporal_relaxation'].detach()),
         })
 
+        cycle_time = time.time() - cycle_start
+
         print(f"  Divergence: {divergence:.6f}")
         print(f"  Fixed points: {num_fixed}/{args.num_time_steps} ({pct_fixed:.1f}%)")
         print(f"  Reward: {reward_value:.2f}")
         print(f"  Loss: {loss.item():.6f}")
+        print(f"  LR: {scheduler.get_last_lr()[0]:.2e}")
+        print(f"  Time: {cycle_time:.1f}s")
         print()
 
+        # Checkpoint
+        if (cycle + 1) % args.checkpoint_every == 0:
+            checkpoint_dir = Path('checkpoints/spatiotemporal_h200')
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+            checkpoint_path = checkpoint_dir / f'checkpoint_cycle_{cycle+1}.pt'
+            torch.save({
+                'cycle': cycle,
+                'rnn_state_dict': rnn.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'metrics': metrics_history,
+                'config': vars(args)
+            }, checkpoint_path)
+            print(f"  Checkpoint saved: {checkpoint_path}")
+            print()
+
+    elapsed_time = time.time() - start_time
+
+    # Final summary
+    print("="*80)
+    print("TRAINING COMPLETE")
+    print("="*80)
+    print(f"Total time: {elapsed_time/60:.1f} minutes")
+    print(f"Average cycle time: {elapsed_time/args.num_cycles:.1f}s")
+    print(f"Final divergence: {divergence:.6f}")
+    print(f"Final fixed points: {pct_fixed:.1f}%")
+    print()
+
     # Save results
-    output_dir = Path('results/spatiotemporal_basic')
+    output_dir = Path('results/spatiotemporal_h200')
     output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -305,21 +358,14 @@ def main():
                 'fixed_points': num_fixed,
                 'fixed_point_pct': pct_fixed,
                 'reward': reward_value
+            },
+            'timing': {
+                'total_seconds': elapsed_time,
+                'average_cycle_seconds': elapsed_time / args.num_cycles
             }
         }, f, indent=2)
 
     print(f"Results saved: {results_file}")
-
-    # Save checkpoint
-    checkpoint_file = output_dir / f'checkpoint_{timestamp}.pt'
-    torch.save({
-        'rnn_state_dict': rnn.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'metrics': metrics_history,
-        'config': vars(args)
-    }, checkpoint_file)
-
-    print(f"Checkpoint saved: {checkpoint_file}")
 
     return 0
 

@@ -23,17 +23,18 @@ __version__ = "0.1.0"
 __author__ = "Zynerji"
 __parent_project__ = "iVHL (Vibrational Helical Lattice)"
 
-# Core modules
-from . import mobius
-from . import resonance
-from . import gft
-from . import tensor_networks
-from . import utils
+# Core modules (lazy import to avoid circular dependencies)
+# Import from submodules as needed: from hhml.core.mobius import ...
+# from . import mobius
+# from . import resonance
+# from . import gft
+# from . import tensor_networks
+# from . import utils
 
 __all__ = [
-    "mobius",
-    "resonance",
-    "gft",
-    "tensor_networks",
-    "utils",
+    # "mobius",
+    # "resonance",
+    # "gft",
+    # "tensor_networks",
+    # "utils",
 ]

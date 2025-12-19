@@ -152,7 +152,9 @@ class SpatiotemporalMobiusStrip(nn.Module):
             field: With temporal Möbius BC enforced
         """
         # Enforce temporal twist at boundary
-        twist_phase = torch.exp(1j * self.temporal_twist)
+        # Create complex phase: exp(i*τ)
+        twist_tensor = torch.tensor(self.temporal_twist, device=self.device, dtype=torch.float32)
+        twist_phase = torch.exp(1j * twist_tensor)
         field[:, -1] = twist_phase * field[:, 0]
         return field
 
@@ -196,26 +198,27 @@ class SpatiotemporalMobiusStrip(nn.Module):
 
         return fixed_points, percentage
 
-    def get_state_tensor(self) -> torch.Tensor:
+    def get_state_tensor(self, target_dim: int = 256) -> torch.Tensor:
         """
         Get current state as tensor for RNN encoding.
 
-        Returns:
-            state: Shape (num_features,) encoding current spatiotemporal state
+        Args:
+            target_dim: Target state dimension (default: 256)
 
-        Features:
+        Returns:
+            state: Shape (target_dim,) encoding current spatiotemporal state
+
+        Features (core 10, then expanded):
         - Global divergence
         - Temporal fixed point ratio
         - Forward/backward field statistics
         - Spatial/temporal coherence
+        - Expanded with spatial/temporal field samples
         """
-        # Divergence
+        # Core metrics (10 features)
         divergence = self.compute_divergence()
-
-        # Fixed points
         num_fixed, pct_fixed = self.compute_temporal_fixed_points()
 
-        # Field statistics
         forward_mag = torch.abs(self.field_forward)
         backward_mag = torch.abs(self.field_backward)
 
@@ -224,7 +227,6 @@ class SpatiotemporalMobiusStrip(nn.Module):
         backward_mean = torch.mean(backward_mag).item()
         backward_std = torch.std(backward_mag).item()
 
-        # Spatial coherence (along θ axis)
         spatial_coherence_f = torch.mean(torch.abs(
             torch.diff(self.field_forward, dim=0)
         )).item()
@@ -232,7 +234,6 @@ class SpatiotemporalMobiusStrip(nn.Module):
             torch.diff(self.field_backward, dim=0)
         )).item()
 
-        # Temporal coherence (along t axis)
         temporal_coherence_f = torch.mean(torch.abs(
             torch.diff(self.field_forward, dim=1)
         )).item()
@@ -240,10 +241,10 @@ class SpatiotemporalMobiusStrip(nn.Module):
             torch.diff(self.field_backward, dim=1)
         )).item()
 
-        # Stack into state vector
-        state = torch.tensor([
+        # Core state vector (10 features)
+        core_state = torch.tensor([
             divergence,
-            pct_fixed / 100.0,  # Normalize to [0, 1]
+            pct_fixed / 100.0,
             forward_mean,
             forward_std,
             backward_mean,
@@ -253,6 +254,33 @@ class SpatiotemporalMobiusStrip(nn.Module):
             temporal_coherence_f,
             temporal_coherence_b,
         ], device=self.device)
+
+        # Expand to target_dim by sampling field values
+        if target_dim > 10:
+            # Sample spatial-temporal field points
+            num_samples = target_dim - 10
+
+            # Sample forward field
+            forward_flat = self.field_forward.flatten()
+            backward_flat = self.field_backward.flatten()
+
+            # Uniform sampling indices
+            indices = torch.linspace(0, len(forward_flat) - 1, num_samples // 2, dtype=torch.long)
+
+            forward_samples = torch.abs(forward_flat[indices]).real
+            backward_samples = torch.abs(backward_flat[indices]).real
+
+            # Pad if necessary
+            if len(forward_samples) + len(backward_samples) < num_samples:
+                padding = torch.zeros(num_samples - len(forward_samples) - len(backward_samples), device=self.device)
+                field_samples = torch.cat([forward_samples, backward_samples, padding])
+            else:
+                field_samples = torch.cat([forward_samples, backward_samples])[:num_samples]
+
+            # Concatenate core state + field samples
+            state = torch.cat([core_state, field_samples])
+        else:
+            state = core_state[:target_dim]
 
         return state
 
