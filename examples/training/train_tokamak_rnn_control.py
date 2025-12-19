@@ -42,6 +42,123 @@ from train_tokamak_wormhole_hunt import (
 )
 
 
+def detect_spatial_vortices(field_2d, positions, vortex_threshold=0.5):
+    """
+    Detect spatial vortices at first time slice.
+
+    Args:
+        field_2d: Complex field [num_nodes, num_time_steps]
+        positions: Node positions [num_nodes, 3]
+        vortex_threshold: Minimum amplitude for vortex
+
+    Returns:
+        dict with node_idx, amplitude, phase, charge
+    """
+    # Use first time slice
+    field_spatial = field_2d[:, 0]
+    return detect_temporal_vortices_gpu(field_spatial, positions, vortex_threshold)
+
+
+def detect_temporal_vortices_along_time(field_2d, vortex_threshold=0.5):
+    """
+    Detect temporal vortices: phase singularities along time dimension.
+
+    For each spatial node, check if phase winds around 2π across time steps.
+
+    Args:
+        field_2d: Complex field [num_nodes, num_time_steps]
+        vortex_threshold: Minimum amplitude for vortex
+
+    Returns:
+        dict with node_idx (spatial location), winding_number, mean_amplitude
+    """
+    num_nodes, num_time_steps = field_2d.shape
+
+    # Compute phase and amplitude along time for each node
+    phase = torch.angle(field_2d)  # [num_nodes, num_time_steps]
+    amplitude = torch.abs(field_2d)  # [num_nodes, num_time_steps]
+
+    # Compute phase differences along time
+    phase_diff = torch.diff(phase, dim=1)  # [num_nodes, num_time_steps-1]
+
+    # Wrap to [-π, π]
+    phase_diff = torch.atan2(torch.sin(phase_diff), torch.cos(phase_diff))
+
+    # Total phase change around temporal loop
+    total_phase_change = phase_diff.sum(dim=1)  # [num_nodes]
+
+    # Winding number (should be integer multiple of 2π)
+    winding_number = total_phase_change / (2 * torch.pi)
+
+    # Find nodes with significant winding (temporal vortices)
+    # AND sufficient amplitude
+    mean_amplitude = amplitude.mean(dim=1)  # [num_nodes]
+    temporal_vortex_mask = (torch.abs(winding_number) > 0.25) & (mean_amplitude > vortex_threshold)
+
+    temporal_vortex_indices = torch.where(temporal_vortex_mask)[0]
+
+    if len(temporal_vortex_indices) == 0:
+        return {
+            'node_idx': torch.tensor([], dtype=torch.long, device=field_2d.device),
+            'winding_number': torch.tensor([], dtype=torch.float, device=field_2d.device),
+            'amplitude': torch.tensor([], dtype=torch.float, device=field_2d.device)
+        }
+
+    return {
+        'node_idx': temporal_vortex_indices,
+        'winding_number': winding_number[temporal_vortex_indices],
+        'amplitude': mean_amplitude[temporal_vortex_indices]
+    }
+
+
+def detect_spatiotemporal_vortices(field_2d, positions, vortex_threshold=0.5):
+    """
+    Detect spatiotemporal vortices: nodes with persistent high amplitude across time.
+
+    OPTIMIZED VERSION: Fully vectorized, no loops.
+
+    Args:
+        field_2d: Complex field [num_nodes, num_time_steps]
+        positions: Node positions [num_nodes, 3]
+        vortex_threshold: Minimum amplitude for vortex
+
+    Returns:
+        dict with node_idx, time_coverage, amplitude
+    """
+    num_nodes, num_time_steps = field_2d.shape
+
+    # Compute amplitude at all nodes and time steps [num_nodes, num_time_steps]
+    amplitude = torch.abs(field_2d)
+
+    # Count how many time steps each node has amplitude > threshold [num_nodes]
+    high_amplitude_mask = amplitude > vortex_threshold  # [num_nodes, num_time_steps]
+    time_count = high_amplitude_mask.sum(dim=1)  # [num_nodes]
+
+    # Persistent vortices: nodes with high amplitude in >= 50% of time steps
+    persistent_threshold = num_time_steps * 0.5
+    persistent_mask = time_count >= persistent_threshold
+
+    # Find persistent nodes
+    persistent_nodes = torch.where(persistent_mask)[0]
+
+    if len(persistent_nodes) == 0:
+        return {
+            'node_idx': torch.tensor([], dtype=torch.long, device=field_2d.device),
+            'time_coverage': torch.tensor([], dtype=torch.float, device=field_2d.device),
+            'amplitude': torch.tensor([], dtype=torch.float, device=field_2d.device)
+        }
+
+    # Compute time coverage and mean amplitude for persistent nodes
+    time_coverage = time_count[persistent_nodes].float() / num_time_steps
+    mean_amplitudes = amplitude[persistent_nodes].mean(dim=1)
+
+    return {
+        'node_idx': persistent_nodes,
+        'time_coverage': time_coverage,  # Fraction of time steps where node is vortex
+        'amplitude': mean_amplitudes
+    }
+
+
 class TokamakRNN(nn.Module):
     """
     RNN controller for tokamak wormhole system.
@@ -152,34 +269,47 @@ class TokamakRNN(nn.Module):
 
 
 def compute_reward(
-    num_vortices,
-    vortex_density,
+    spatial_density,
+    temporal_density,
+    spatiotemporal_density,
+    total_density,
     num_wormholes,
     fixed_point_pct,
     divergence,
     total_nodes
 ):
     """
-    Compute reward for tokamak RNN training.
+    Enhanced 3-category vortex reward for tokamak RNN training.
 
     Balances:
-    - High vortex density (target 80-100%)
+    - High spatial vortex density (80-100%)
+    - High temporal vortex density
+    - High spatiotemporal vortex density (persistent vortices)
+    - High total vortex density (union of all 3)
     - 100% temporal fixed points
     - High wormhole count
     - Low divergence
     """
-    # Vortex density reward (target: 80-100%)
-    vortex_reward = 0.0
-    if 0.8 <= vortex_density <= 1.0:
-        vortex_reward = 100.0
-    elif vortex_density > 0.5:
-        vortex_reward = 100.0 * (vortex_density - 0.5) / 0.3
+    # Spatial vortex density reward (target: 80-100%)
+    spatial_reward = 0.0
+    if 0.8 <= spatial_density <= 1.0:
+        spatial_reward = 50.0
+    elif spatial_density > 0.5:
+        spatial_reward = 50.0 * (spatial_density - 0.5) / 0.3
+
+    # Temporal vortex density reward (target: ~80%)
+    temporal_reward = 50.0 * min(temporal_density / 0.8, 1.0)
+
+    # Spatiotemporal vortex density reward (persistent vortices are valuable, target: ~50%)
+    spatiotemporal_reward = 50.0 * min(spatiotemporal_density / 0.5, 1.0)
+
+    # Total density reward (bonus for high coverage, target: ~90%)
+    total_reward = 50.0 * min(total_density / 0.9, 1.0)
 
     # Fixed points reward (target: 100%)
     fixed_point_reward = 100.0 * (fixed_point_pct / 100.0)
 
     # Wormhole reward (normalized by total possible inter-strip connections)
-    # Max wormholes ~ total_nodes (rough estimate)
     wormhole_reward = 50.0 * min(num_wormholes / total_nodes, 1.0)
 
     # Divergence penalty
@@ -189,10 +319,14 @@ def compute_reward(
         divergence_penalty = -20.0 * divergence
 
     # Total reward
-    reward = vortex_reward + fixed_point_reward + wormhole_reward + divergence_penalty
+    reward = (spatial_reward + temporal_reward + spatiotemporal_reward + total_reward +
+              fixed_point_reward + wormhole_reward + divergence_penalty)
 
     return reward, {
-        'vortex_reward': vortex_reward,
+        'spatial_reward': spatial_reward,
+        'temporal_reward': temporal_reward,
+        'spatiotemporal_reward': spatiotemporal_reward,
+        'total_reward': total_reward,
         'fixed_point_reward': fixed_point_reward,
         'wormhole_reward': wormhole_reward,
         'divergence_penalty': divergence_penalty
@@ -356,26 +490,44 @@ def train_cycle(
     # Use forward field as final state (2D: nodes x time_steps)
     field_final = field_forward
 
-    # Detect vortices (use first time slice for detection)
-    vortex_dict = detect_temporal_vortices_gpu(
-        field_final[:, 0],  # Use first time slice (1D field)
-        tokamak.positions,  # Combined positions tensor [total_nodes, 3]
-        vortex_threshold=params_scalar['vortex_quality_threshold']
-    )
+    # 3-CATEGORY VORTEX DETECTION
+    threshold = params_scalar['vortex_quality_threshold']
 
-    num_vortices = len(vortex_dict['node_idx'])
-    vortex_density = num_vortices / args.total_nodes
+    # 1. SPATIAL vortices (at t=0)
+    spatial_vortices = detect_spatial_vortices(field_final, tokamak.positions, threshold)
+    num_spatial = len(spatial_vortices['node_idx'])
+    spatial_density = num_spatial / args.total_nodes
 
-    # Simplified vortex annihilation (working with single time slice)
+    # 2. TEMPORAL vortices (along time dimension for each node)
+    temporal_vortices = detect_temporal_vortices_along_time(field_final, threshold)
+    num_temporal = len(temporal_vortices['node_idx'])
+    temporal_density = num_temporal / args.total_nodes
+
+    # 3. SPATIOTEMPORAL vortices (persistent across space AND time)
+    spatiotemporal_vortices = detect_spatiotemporal_vortices(field_final, tokamak.positions, threshold)
+    num_spatiotemporal = len(spatiotemporal_vortices['node_idx'])
+    spatiotemporal_density = num_spatiotemporal / args.total_nodes
+
+    # TOTAL vortices (union of all 3 categories)
+    # Union: any node that is a vortex in at least one category
+    all_vortex_nodes = set()
+    all_vortex_nodes.update(spatial_vortices['node_idx'].cpu().numpy())
+    all_vortex_nodes.update(temporal_vortices['node_idx'].cpu().numpy())
+    all_vortex_nodes.update(spatiotemporal_vortices['node_idx'].cpu().numpy())
+
+    num_vortices_total = len(all_vortex_nodes)
+    vortex_density_total = num_vortices_total / args.total_nodes
+
+    # Simplified vortex annihilation (working with spatial vortices)
     field_annihilated = field_final.clone()
     num_annihilated = 0
 
-    if num_vortices > 0:
-        # Get vortex amplitudes (quality metric)
-        vortex_amplitudes = vortex_dict['amplitude']
+    if num_spatial > 0:
+        # Get vortex amplitudes (quality metric from spatial vortices)
+        vortex_amplitudes = spatial_vortices['amplitude']
 
         # Find low-quality vortices
-        low_quality_mask = vortex_amplitudes < params_scalar['vortex_quality_threshold']
+        low_quality_mask = vortex_amplitudes < threshold
         num_low_quality = low_quality_mask.sum().item()
 
         # Preserve some fraction (diversity)
@@ -391,7 +543,7 @@ def train_cycle(
             annihilate_indices = low_quality_indices[sorted_order[:num_to_annihilate]]
 
             # Get node indices to annihilate
-            nodes_to_annihilate = vortex_dict['node_idx'][annihilate_indices]
+            nodes_to_annihilate = spatial_vortices['node_idx'][annihilate_indices]
 
             # Inject antivortices (simplified: reduce amplitude in annihilation radius)
             for node_idx in nodes_to_annihilate:
@@ -404,14 +556,16 @@ def train_cycle(
     with torch.no_grad():
         tokamak.field = field_annihilated.clone()
 
-    # Detect wormholes (simplified: count high-quality vortex pairs)
+    # Detect wormholes (simplified: count high-quality spatial vortex pairs)
     # (Full wormhole detection would check inter-strip angular alignment)
-    num_wormholes = max(0, num_vortices - num_annihilated) // 2
+    num_wormholes = max(0, num_spatial - num_annihilated) // 2
 
-    # Compute reward
+    # Compute reward (3-category vortex detection)
     reward, reward_components = compute_reward(
-        num_vortices,
-        vortex_density,
+        spatial_density,
+        temporal_density,
+        spatiotemporal_density,
+        vortex_density_total,
         num_wormholes,
         fixed_point_pct,
         divergence,
@@ -462,12 +616,23 @@ def train_cycle(
             optimizer.step()
             nan_warning = False
 
-    # Package metrics
+    # Package metrics (3-category vortex detection)
     metrics = {
         'reward': reward,
         'reward_components': reward_components,
-        'vortex_count': num_vortices,
-        'vortex_density': vortex_density,
+        # 3-category vortex metrics
+        'spatial_density': spatial_density,
+        'temporal_density': temporal_density,
+        'spatiotemporal_density': spatiotemporal_density,
+        'total_density': vortex_density_total,
+        'num_spatial': num_spatial,
+        'num_temporal': num_temporal,
+        'num_spatiotemporal': num_spatiotemporal,
+        'num_vortices_total': num_vortices_total,
+        # Legacy metrics (for compatibility)
+        'vortex_count': num_vortices_total,
+        'vortex_density': vortex_density_total,
+        # Other metrics
         'num_annihilated': num_annihilated,
         'num_wormholes': num_wormholes,
         'fixed_point_pct': fixed_point_pct,
@@ -568,8 +733,19 @@ def main():
     history = {
         'rewards': [],
         'reward_components': [],
+        # 3-category vortex metrics
+        'spatial_densities': [],
+        'temporal_densities': [],
+        'spatiotemporal_densities': [],
+        'total_densities': [],
+        'num_spatial': [],
+        'num_temporal': [],
+        'num_spatiotemporal': [],
+        'num_vortices_total': [],
+        # Legacy metrics (for compatibility)
         'vortex_counts': [],
         'vortex_densities': [],
+        # Other metrics
         'num_annihilated': [],
         'num_wormholes': [],
         'fixed_point_pcts': [],
@@ -596,8 +772,19 @@ def main():
         # Record history
         history['rewards'].append(metrics['reward'])
         history['reward_components'].append(metrics['reward_components'])
+        # 3-category vortex metrics
+        history['spatial_densities'].append(metrics['spatial_density'])
+        history['temporal_densities'].append(metrics['temporal_density'])
+        history['spatiotemporal_densities'].append(metrics['spatiotemporal_density'])
+        history['total_densities'].append(metrics['total_density'])
+        history['num_spatial'].append(metrics['num_spatial'])
+        history['num_temporal'].append(metrics['num_temporal'])
+        history['num_spatiotemporal'].append(metrics['num_spatiotemporal'])
+        history['num_vortices_total'].append(metrics['num_vortices_total'])
+        # Legacy metrics (for compatibility)
         history['vortex_counts'].append(metrics['vortex_count'])
         history['vortex_densities'].append(metrics['vortex_density'])
+        # Other metrics
         history['num_annihilated'].append(metrics['num_annihilated'])
         history['num_wormholes'].append(metrics['num_wormholes'])
         history['fixed_point_pcts'].append(metrics['fixed_point_pct'])
@@ -613,7 +800,11 @@ def main():
         if cycle % 10 == 0 or cycle == args.num_cycles - 1:
             print(f"Cycle {cycle}/{args.num_cycles}")
             print(f"  Reward: {metrics['reward']:.2f}")
-            print(f"  Vortex density: {metrics['vortex_density']:.2%} ({metrics['vortex_count']} vortices)")
+            print(f"  Vortex density breakdown:")
+            print(f"    Spatial:        {metrics['spatial_density']:.1%} ({metrics['num_spatial']} vortices)")
+            print(f"    Temporal:       {metrics['temporal_density']:.1%} ({metrics['num_temporal']} vortices)")
+            print(f"    Spatiotemporal: {metrics['spatiotemporal_density']:.1%} ({metrics['num_spatiotemporal']} vortices)")
+            print(f"    Total (union):  {metrics['total_density']:.1%} ({metrics['num_vortices_total']} vortices)")
             print(f"  Annihilated: {metrics['num_annihilated']}")
             print(f"  Wormholes: {metrics['num_wormholes']}")
             print(f"  Fixed points: {metrics['fixed_point_pct']:.1f}%")
