@@ -422,11 +422,40 @@ def main():
         optimizer.zero_grad()
         if scaler is not None:
             scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+
+            # Gradient clipping to prevent NaN in long training runs
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
+
+            # Check for NaN in gradients
+            has_nan_grad = any(
+                param.grad is not None and torch.isnan(param.grad).any()
+                for param in rnn.parameters()
+            )
+
+            if has_nan_grad:
+                print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
+                optimizer.zero_grad()
+            else:
+                scaler.step(optimizer)
+                scaler.update()
         else:
             loss.backward()
-            optimizer.step()
+
+            # Gradient clipping to prevent NaN in long training runs
+            torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
+
+            # Check for NaN in gradients
+            has_nan_grad = any(
+                param.grad is not None and torch.isnan(param.grad).any()
+                for param in rnn.parameters()
+            )
+
+            if has_nan_grad:
+                print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
+                optimizer.zero_grad()
+            else:
+                optimizer.step()
 
         # Track metrics
         metrics['rewards'].append(float(reward_value.item()))

@@ -445,6 +445,8 @@ class EmergentVerifier:
                 return [convert(item) for item in obj]
             elif isinstance(obj, (np.int64, np.int32, np.float64, np.float32)):
                 return float(obj)
+            elif isinstance(obj, (np.bool_, bool)):
+                return bool(obj)
             else:
                 return obj
 

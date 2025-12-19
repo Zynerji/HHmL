@@ -1,6 +1,6 @@
 # Hello Claude - HHmL Framework Context
 
-**Last Updated**: 2025-12-18 (Hash Quine Discovery Published)
+**Last Updated**: 2025-12-19 (Hash Quine Discovery Published)
 **Project**: HHmL (Holo-Harmonic Möbius Lattice) Framework
 **Repository**: https://github.com/Zynerji/HHmL
 **Parent Project**: iVHL (Vibrational Helical Lattice)
@@ -1717,7 +1717,7 @@ Same as iVHL:
 
 ## Common Errors and Fixes (HHmL Development Log)
 
-**Last Updated**: 2025-12-18
+**Last Updated**: 2025-12-19
 
 This section documents all errors encountered during HHmL development and their solutions, to prevent future recurrence.
 
@@ -2061,6 +2061,103 @@ proximity = abs(math.log2(hash_int) - math.log2(self.target))  # Also works
 # Find potential issues
 grep -n "np\.log.*int\|np\.log2.*int\|np\.log10.*int" file.py
 ```
+
+### 11. JSON Serialization of numpy.bool_ Types
+
+**Error**: `TypeError: Object of type bool is not JSON serializable` (or `TypeError: Object of type bool_ is not JSON serializable`)
+
+**Cause**: NumPy boolean types (`np.bool_`) are not natively JSON serializable, even though they behave like Python `bool`. When JSON encoding dictionaries containing numpy bools, the encoder fails.
+
+**Location**: `emergent_verifier.py` line 158 in `_prepare_for_json()`
+
+**Solution**:
+```python
+# Add to _prepare_for_json() conversion function
+def convert(obj):
+    if isinstance(obj, torch.Tensor):
+        return obj.tolist()
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert(item) for item in obj]
+    elif isinstance(obj, (np.int64, np.int32, np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, (np.bool_, bool)):  # ADD THIS LINE
+        return bool(obj)                      # ADD THIS LINE
+    else:
+        return obj
+```
+
+**Prevention**: Always handle numpy scalar types (`np.bool_`, `np.int64`, `np.float64`, etc.) explicitly in JSON conversion functions.
+
+---
+
+### 12. NaN in RNN Gradients During Extended Training
+
+**Error**: `ValueError: cannot convert float NaN to integer` at cycle 1550+ in long training runs (6+ hours)
+
+**Cause**: After many training cycles (1000+), RNN parameters can develop NaN values in gradients due to:
+- Gradient explosion (unbounded parameter growth)
+- Numerical instability in mixed precision training
+- Accumulated floating point errors
+
+**Location**: `train_single_h200_emergent_hunt.py` gradient update section (around line 424)
+
+**Solution**:
+```python
+optimizer.zero_grad()
+if scaler is not None:
+    scaler.scale(loss).backward()
+
+    # Gradient clipping to prevent NaN in long training runs
+    scaler.unscale_(optimizer)
+    torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
+
+    # Check for NaN in gradients
+    has_nan_grad = any(
+        param.grad is not None and torch.isnan(param.grad).any()
+        for param in rnn.parameters()
+    )
+
+    if has_nan_grad:
+        print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
+        optimizer.zero_grad()
+    else:
+        scaler.step(optimizer)
+        scaler.update()
+else:
+    loss.backward()
+
+    # Gradient clipping to prevent NaN in long training runs
+    torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
+
+    # Check for NaN in gradients
+    has_nan_grad = any(
+        param.grad is not None and torch.isnan(param.grad).any()
+        for param in rnn.parameters()
+    )
+
+    if has_nan_grad:
+        print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
+        optimizer.zero_grad()
+    else:
+        optimizer.step()
+```
+
+**Prevention**:
+1. **Always clip gradients** in long training runs: `torch.nn.utils.clip_grad_norm_(params, max_norm=1.0)`
+2. **Check for NaN** after backward pass and skip update if found
+3. **Use learning rate decay** for very long runs (10K+ cycles)
+4. **Monitor gradient norms** and add early stopping if they diverge
+
+**Alternative Solutions**:
+- Add learning rate scheduler: `torch.optim.lr_scheduler.ReduceLROnPlateau`
+- Use gradient accumulation instead of large learning rates
+- Reduce hidden dimension size if memory allows more frequent checkpointing
+
+---
 
 ---
 
