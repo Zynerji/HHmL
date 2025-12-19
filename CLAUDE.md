@@ -1296,6 +1296,8 @@ Before publishing, verify:
 
 ### Current H200 VM Connection
 
+**IMPORTANT**: VM IP addresses change frequently on Nebius. Always check ~/.ssh/config for current IP.
+
 ```yaml
 # VM Configuration
 Username: ivhl
@@ -1303,10 +1305,90 @@ SSH Key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHjxrDQgRokCaoGxJcVFI4jtOiJVgGBJDJQ
 Jupyter Token: myBn0JMX7uIuMraq
 Sudo Access: ALL=(ALL) NOPASSWD:ALL
 VM Provider: Nebius
-Last Known IP: 89.169.111.28 (check ~/.ssh/known_hosts for current IP)
+```
 
-# Connection Command
-ssh ivhl@<VM_IP>
+### SSH Configuration (MANDATORY SETUP)
+
+**Problem**: Nebius VM IPs change frequently, causing "HOST IDENTIFICATION HAS CHANGED" errors.
+
+**Solution**: Use SSH config with flexible host key checking.
+
+**Setup (~/.ssh/config):**
+
+```bash
+# Add this to ~/.ssh/config (create if doesn't exist)
+Host h200
+    HostName 89.169.111.28
+    User ivhl
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+
+# Alternative: If you want to track host keys but auto-update
+Host h200-strict
+    HostName 89.169.111.28
+    User ivhl
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking accept-new
+```
+
+**Usage:**
+
+```bash
+# Connect with auto-accepting host keys (recommended for VMs)
+ssh h200
+
+# Or with IP tracking
+ssh h200-strict
+
+# SCP with config
+scp h200:/path/to/file /local/path
+```
+
+### Updating VM IP Address
+
+When VM IP changes (you'll see connection refused):
+
+```bash
+# 1. Get new IP from Nebius dashboard or email
+NEW_IP="89.169.XXX.XXX"
+
+# 2. Update SSH config
+sed -i "s/HostName .*/HostName $NEW_IP/" ~/.ssh/config
+
+# 3. Test connection
+ssh h200
+
+# OR manually edit ~/.ssh/config and update HostName line
+```
+
+### Quick IP Discovery
+
+If you don't know the current IP:
+
+```bash
+# Check known_hosts for recent IPs
+grep "ivhl@" ~/.ssh/known_hosts | tail -5
+
+# Or check local bash history
+grep "ssh.*ivhl" ~/.bash_history | tail -10
+```
+
+### Connection Commands
+
+```bash
+# SSH (using config - RECOMMENDED)
+ssh h200
+
+# SSH (direct - if config not set up)
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ivhl@<VM_IP>
+
+# SCP (using config)
+scp h200:/remote/file /local/path
+
+# SCP (direct)
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ivhl@<VM_IP>:/remote/file /local/path
 
 # Jupyter Access
 http://<VM_IP>:8888/?token=myBn0JMX7uIuMraq
@@ -1315,8 +1397,11 @@ http://<VM_IP>:8888/?token=myBn0JMX7uIuMraq
 ### Quick Deployment
 
 ```bash
-# 1. SSH into H200
-ssh ivhl@89.169.111.28
+# 1. SSH into H200 (using config alias - recommended)
+ssh h200
+
+# Or directly (if config not set up)
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ivhl@<VM_IP>
 
 # 2. Clone HHmL repo
 git clone https://github.com/Zynerji/HHmL.git
@@ -1358,21 +1443,31 @@ python hhml/mobius/mobius_training.py \
 
 ```bash
 # 1. Copy ALL modified files from H200 to local repo
-# Training scripts
-scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/examples/training/*.py \
+
+# Using SSH config alias (RECOMMENDED):
+scp h200:/home/ivhl/tHHmL/examples/training/*.py \
+    /c/Users/cknop/.local/bin/tHHmL/examples/training/
+
+# Or direct (if config not set up):
+scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    ivhl@<VM_IP>:/home/ivhl/tHHmL/examples/training/*.py \
     /c/Users/cknop/.local/bin/tHHmL/examples/training/
 
 # Core modules (if modified)
-scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/core/**/*.py \
+scp h200:/home/ivhl/tHHmL/src/hhml/core/**/*.py \
     /c/Users/cknop/.local/bin/tHHmL/src/hhml/core/
 
 # ML modules (if modified)
-scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/ml/**/*.py \
+scp h200:/home/ivhl/tHHmL/src/hhml/ml/**/*.py \
     /c/Users/cknop/.local/bin/tHHmL/src/hhml/ml/
 
 # Utils (if modified)
-scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/utils/*.py \
+scp h200:/home/ivhl/tHHmL/src/hhml/utils/*.py \
     /c/Users/cknop/.local/bin/tHHmL/src/hhml/utils/
+
+# Results and whitepapers
+scp -r h200:/home/ivhl/results/tokamak_* \
+    /c/Users/cknop/.local/bin/tHHmL/results/
 
 # 2. Verify files copied successfully
 ls -lh /c/Users/cknop/.local/bin/tHHmL/examples/training/
@@ -1383,7 +1478,7 @@ cd /c/Users/cknop/.local/bin/tHHmL
 git status
 git add <modified_files>
 git commit -m "fix: <description of fixes tested successfully on H200>"
-git push origin main
+git push origin master
 ```
 
 #### Quick Reference: Files Commonly Modified on H200
