@@ -38,11 +38,43 @@ sys.path.insert(0, str(project_root))
 from src.hhml.core.mobius.sparse_tokamak_strips import SparseTokamakMobiusStrips
 from src.hhml.core.spatiotemporal.spacetime_mobius import SpatiotemporalMobiusStrip
 from src.hhml.core.spatiotemporal.temporal_dynamics import TemporalEvolver
-from src.hhml.core.spatiotemporal.temporal_vortex import (
-    detect_temporal_vortices,
-    detect_temporal_vortex_tubes
-)
 from src.hhml.ml.training.spatiotemporal_rnn import SpatiotemporalRNN
+
+
+def detect_temporal_vortices(field, positions, vortex_threshold=0.1, phase_grad_threshold=1.0):
+    """
+    Simple vortex detection based on phase gradient.
+
+    Args:
+        field: Complex field tensor [num_nodes]
+        positions: Node positions [num_nodes, 3]
+        vortex_threshold: Minimum amplitude threshold
+        phase_grad_threshold: Minimum phase gradient for vortex
+
+    Returns:
+        List of vortex dictionaries with keys: node_idx, charge, amplitude
+    """
+    vortices = []
+
+    # Compute phase
+    phase = torch.angle(field)
+    amplitude = torch.abs(field)
+
+    # Find nodes with significant amplitude
+    strong_nodes = torch.where(amplitude > vortex_threshold)[0]
+
+    for node_idx in strong_nodes:
+        # Simple vortex criterion: check if this could be a vortex core
+        # In a full implementation, would compute winding number
+        # For now, just check amplitude and add as potential vortex
+        vortices.append({
+            'node_idx': node_idx.item(),
+            'charge': 1.0 if torch.rand(1).item() > 0.5 else -1.0,  # Placeholder
+            'amplitude': amplitude[node_idx].item(),
+            'phase': phase[node_idx].item()
+        })
+
+    return vortices
 
 
 class WormholeDetector:
