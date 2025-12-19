@@ -37,7 +37,7 @@ sys.path.insert(0, str(project_root))
 
 from src.hhml.core.mobius.sparse_tokamak_strips import SparseTokamakMobiusStrips
 from src.hhml.core.spatiotemporal.spacetime_mobius import SpatiotemporalMobiusStrip
-from src.hhml.core.spatiotemporal.temporal_dynamics import TemporalDynamics
+from src.hhml.core.spatiotemporal.temporal_dynamics import TemporalEvolver
 from src.hhml.core.spatiotemporal.temporal_vortex import (
     detect_temporal_vortices,
     detect_temporal_vortex_tubes
@@ -269,7 +269,7 @@ def train_tokamak_wormhole_hunt(args):
 
     # Initialize spatiotemporal dynamics
     print("Initializing temporal dynamics...")
-    temporal_dynamics = TemporalDynamics(
+    temporal_dynamics = TemporalEvolver(
         num_nodes=total_nodes,
         num_time_steps=args.num_time_steps,
         edge_index=tokamak.edge_index,
