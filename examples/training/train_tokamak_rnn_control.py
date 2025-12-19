@@ -322,19 +322,27 @@ def train_cycle(
     # Extract scalar values (remove batch dimension)
     params_scalar = {k: v.item() if v.numel() == 1 else v.squeeze(0).item()
                      for k, v in params.items() if k != 'value'}
-    value = params['value'].item() if params['value'].numel() == 1 else params['value'].squeeze(0).item()
+    # Keep value as tensor for backpropagation
+    value = params['value'].squeeze() if params['value'].numel() > 1 else params['value']
 
     # Update retrocausal coupling with RNN parameters
     with torch.no_grad():
         coupler.retrocausal_strength = params_scalar['retrocausal_alpha']
         coupler.prophetic_mixing = params_scalar['prophetic_gamma']
 
+    # Initialize temporal fields (2D: nodes x time_steps)
+    # Self-consistent initialization: ψ_f(t=0) = ψ_b(t=0)
+    field_forward = torch.randn(args.total_nodes, args.num_time_steps,
+                                dtype=torch.complex64, device=device) * 0.1
+    field_backward = field_forward.clone()
+
     # Run temporal evolution with RNN-controlled coupling
-    field_forward, field_backward = coupler.couple(
-        tokamak.field.clone(),
-        tokamak.field.clone(),
-        max_iterations=50,
-        threshold=1e-6
+    field_forward, field_backward = coupler.apply_coupling(
+        field_forward,
+        field_backward,
+        enable_mixing=True,
+        enable_swapping=True,
+        enable_anchoring=True
     )
 
     # Compute convergence metrics
@@ -344,31 +352,52 @@ def train_cycle(
     total_points = field_forward.numel()
     fixed_point_pct = 100.0 * num_fixed / total_points
 
-    # Use forward field as final state
+    # Use forward field as final state (2D: nodes x time_steps)
     field_final = field_forward
 
-    # Detect vortices
-    vortex_positions = detect_temporal_vortices_gpu(
-        field_final,
-        tokamak.x,
-        tokamak.y,
-        tokamak.z,
-        quality_threshold=params_scalar['vortex_quality_threshold']
+    # Detect vortices (use first time slice for detection)
+    vortex_dict = detect_temporal_vortices_gpu(
+        field_final[:, 0],  # Use first time slice (1D field)
+        tokamak.positions,  # Combined positions tensor [total_nodes, 3]
+        vortex_threshold=params_scalar['vortex_quality_threshold']
     )
 
-    num_vortices = len(vortex_positions)
+    num_vortices = len(vortex_dict['node_idx'])
     vortex_density = num_vortices / args.total_nodes
 
-    # Apply vortex annihilation
-    field_annihilated, num_annihilated = apply_vortex_annihilation(
-        field_final,
-        vortex_positions,
-        quality_threshold=params_scalar['vortex_quality_threshold'],
-        antivortex_strength=params_scalar['antivortex_strength'],
-        annihilation_radius=params_scalar['annihilation_radius'],
-        preserve_ratio=params_scalar['preserve_ratio'],
-        device=device
-    )
+    # Simplified vortex annihilation (working with single time slice)
+    field_annihilated = field_final.clone()
+    num_annihilated = 0
+
+    if num_vortices > 0:
+        # Get vortex amplitudes (quality metric)
+        vortex_amplitudes = vortex_dict['amplitude']
+
+        # Find low-quality vortices
+        low_quality_mask = vortex_amplitudes < params_scalar['vortex_quality_threshold']
+        num_low_quality = low_quality_mask.sum().item()
+
+        # Preserve some fraction (diversity)
+        num_to_annihilate = int(num_low_quality * (1.0 - params_scalar['preserve_ratio']))
+
+        if num_to_annihilate > 0:
+            # Get indices of low-quality vortices
+            low_quality_indices = torch.where(low_quality_mask)[0]
+
+            # Sort by quality (lowest first)
+            qualities = vortex_amplitudes[low_quality_indices]
+            sorted_order = torch.argsort(qualities)
+            annihilate_indices = low_quality_indices[sorted_order[:num_to_annihilate]]
+
+            # Get node indices to annihilate
+            nodes_to_annihilate = vortex_dict['node_idx'][annihilate_indices]
+
+            # Inject antivortices (simplified: reduce amplitude in annihilation radius)
+            for node_idx in nodes_to_annihilate:
+                # Reduce field amplitude at this node and neighbors
+                field_annihilated[node_idx, :] *= (1.0 - params_scalar['antivortex_strength'])
+
+            num_annihilated = len(nodes_to_annihilate)
 
     # Update tokamak field
     with torch.no_grad():
@@ -412,8 +441,10 @@ def train_cycle(
             nan_warning = True
         else:
             scaler.step(optimizer)
-            scaler.update()
             nan_warning = False
+
+        # Always update scaler state (required even when skipping step)
+        scaler.update()
     else:
         loss.backward()
         torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=args.grad_clip)
@@ -440,7 +471,7 @@ def train_cycle(
         'num_wormholes': num_wormholes,
         'fixed_point_pct': fixed_point_pct,
         'divergence': divergence,
-        'value': value,
+        'value': value.item() if isinstance(value, torch.Tensor) else value,
         'loss': loss.item(),
         'nan_warning': nan_warning
     }
