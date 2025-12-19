@@ -436,6 +436,7 @@ def main():
             if has_nan_grad:
                 print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
                 optimizer.zero_grad()
+                scaler.update()  # Must call update() to reset scaler state
             else:
                 scaler.step(optimizer)
                 scaler.update()
