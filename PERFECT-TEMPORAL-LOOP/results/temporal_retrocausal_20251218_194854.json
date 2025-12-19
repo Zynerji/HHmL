@@ -1,0 +1,27 @@
+{
+  "timestamp": "20251218_194854",
+  "config": {
+    "difficulty": 20,
+    "time_steps": 50,
+    "spatial_nodes": 1000,
+    "num_nonces": 5000,
+    "temporal_twist": 1.0,
+    "retrocausal_strength": 0.3,
+    "max_loop_iterations": 100
+  },
+  "results": {
+    "mining_improvement": 0.2873997792462504,
+    "p_value": 0.012362188240028597,
+    "temporal_metrics": {
+      "iterations": 0,
+      "converged": false,
+      "paradox_detected": true,
+      "paradox_count": 1,
+      "fixed_points": 0,
+      "temporal_twist": 1.0,
+      "retrocausal_strength": 0.3
+    },
+    "prophetic_mean_quality": 18.541549227935906,
+    "baseline_mean_quality": 18.594991191571342
+  }
+}

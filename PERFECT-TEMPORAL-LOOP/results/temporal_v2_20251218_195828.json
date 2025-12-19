@@ -1,0 +1,25 @@
+{
+  "timestamp": "20251218_195828",
+  "version": "v2_self_consistent",
+  "config": {
+    "difficulty": 20,
+    "time_steps": 50,
+    "spatial_nodes": 1000,
+    "num_nonces": 5000,
+    "temporal_twist": 1.0,
+    "retrocausal_strength": 0.7,
+    "relaxation_factor": 0.15,
+    "max_loop_iterations": 200,
+    "device": "cpu"
+  },
+  "metrics": {
+    "iterations": 34,
+    "converged": true,
+    "final_divergence": 0.007918678224086761,
+    "initial_divergence": 0.0,
+    "fixed_points": 50,
+    "divergence_reduction": -100.0
+  },
+  "improvement": -0.06717063806782492,
+  "p_value": 0.6592930146692778
+}
