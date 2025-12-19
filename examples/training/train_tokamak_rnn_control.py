@@ -332,8 +332,9 @@ def train_cycle(
 
     # Initialize temporal fields (2D: nodes x time_steps)
     # Self-consistent initialization: ψ_f(t=0) = ψ_b(t=0)
+    # Field amplitude increased to 1.0 for vortex formation (was 0.1 - too weak)
     field_forward = torch.randn(args.total_nodes, args.num_time_steps,
-                                dtype=torch.complex64, device=device) * 0.1
+                                dtype=torch.complex64, device=device) * 1.0
     field_backward = field_forward.clone()
 
     # Run temporal evolution with RNN-controlled coupling
