@@ -652,6 +652,13 @@ def main():
 
     args = parser.parse_args()
 
+    # Auto-optimize num_time_steps for long runs (unless explicitly set)
+    # Temporal evolution is expensive - use fewer steps for 800-cycle runs
+    if args.num_time_steps == 100 and args.num_cycles >= 100:
+        args.num_time_steps = 30  # 3x faster, still captures temporal dynamics
+        print(f"Auto-optimized: num_time_steps reduced to {args.num_time_steps} for long run")
+        print()
+
     return train_tokamak_wormhole_hunt(args)
 
 
