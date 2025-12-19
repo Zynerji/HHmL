@@ -37,44 +37,61 @@ sys.path.insert(0, str(project_root))
 
 from src.hhml.core.mobius.sparse_tokamak_strips import SparseTokamakMobiusStrips
 from src.hhml.core.spatiotemporal.spacetime_mobius import SpatiotemporalMobiusStrip
-from src.hhml.core.spatiotemporal.temporal_dynamics import TemporalEvolver
+from src.hhml.core.spatiotemporal.retrocausal_coupling import RetrocausalCoupler
 from src.hhml.ml.training.spatiotemporal_rnn import SpatiotemporalRNN
 
 
-def detect_temporal_vortices(field, positions, vortex_threshold=0.1, phase_grad_threshold=1.0):
+def detect_temporal_vortices_gpu(field, positions, vortex_threshold=0.1, phase_grad_threshold=1.0):
     """
-    Simple vortex detection based on phase gradient.
+    GPU-accelerated vortex detection using pure PyTorch operations.
 
     Args:
-        field: Complex field tensor [num_nodes]
-        positions: Node positions [num_nodes, 3]
+        field: Complex field tensor [num_nodes] on GPU
+        positions: Node positions [num_nodes, 3] on GPU
         vortex_threshold: Minimum amplitude threshold
         phase_grad_threshold: Minimum phase gradient for vortex
 
     Returns:
-        List of vortex dictionaries with keys: node_idx, charge, amplitude
+        Dictionary of tensors:
+            'node_idx': Tensor of vortex node indices
+            'charge': Tensor of vortex charges
+            'amplitude': Tensor of vortex amplitudes
+            'phase': Tensor of vortex phases
     """
-    vortices = []
-
-    # Compute phase
+    # Compute phase and amplitude (all GPU operations)
     phase = torch.angle(field)
     amplitude = torch.abs(field)
 
-    # Find nodes with significant amplitude
-    strong_nodes = torch.where(amplitude > vortex_threshold)[0]
+    # Find vortex candidates
+    vortex_mask = amplitude > vortex_threshold
+    num_vortices = vortex_mask.sum().item()
 
-    for node_idx in strong_nodes:
-        # Simple vortex criterion: check if this could be a vortex core
-        # In a full implementation, would compute winding number
-        # For now, just check amplitude and add as potential vortex
-        vortices.append({
-            'node_idx': node_idx.item(),
-            'charge': 1.0 if torch.rand(1).item() > 0.5 else -1.0,  # Placeholder
-            'amplitude': amplitude[node_idx].item(),
-            'phase': phase[node_idx].item()
-        })
+    if num_vortices == 0:
+        return {
+            'node_idx': torch.tensor([], dtype=torch.long, device=field.device),
+            'charge': torch.tensor([], dtype=torch.float, device=field.device),
+            'amplitude': torch.tensor([], dtype=torch.float, device=field.device),
+            'phase': torch.tensor([], dtype=torch.float, device=field.device)
+        }
 
-    return vortices
+    # Extract vortex properties (vectorized)
+    vortex_indices = torch.where(vortex_mask)[0]
+    vortex_amplitudes = amplitude[vortex_mask]
+    vortex_phases = phase[vortex_mask]
+
+    # Assign random charges (vectorized)
+    vortex_charges = torch.where(
+        torch.rand(num_vortices, device=field.device) > 0.5,
+        torch.ones(num_vortices, device=field.device),
+        -torch.ones(num_vortices, device=field.device)
+    )
+
+    return {
+        'node_idx': vortex_indices,
+        'charge': vortex_charges,
+        'amplitude': vortex_amplitudes,
+        'phase': vortex_phases
+    }
 
 
 class WormholeDetector:
@@ -90,124 +107,124 @@ class WormholeDetector:
         self.charge_tolerance = charge_tolerance
         self.wormhole_history = []
 
-    def detect_wormholes(self, vortices, strip_indices, positions):
+    def detect_wormholes_gpu(self, vortex_dict, strip_indices, positions):
         """
-        Detect inter-strip wormhole candidates
+        GPU-accelerated wormhole detection using vectorized operations.
 
         Args:
-            vortices: List of vortex dictionaries with 'node_idx', 'charge', etc.
-            strip_indices: Tensor mapping node index to strip ID
+            vortex_dict: Dictionary of tensors from detect_temporal_vortices_gpu
+            strip_indices: Tensor mapping node index to strip ID [num_nodes]
             positions: Tensor of 3D positions [num_nodes, 3]
 
         Returns:
-            List of wormhole dictionaries
+            Number of detected wormholes (int)
         """
-        if len(vortices) < 2:
-            return []
+        vortex_indices = vortex_dict['node_idx']
+        num_vortices = len(vortex_indices)
 
-        wormholes = []
+        if num_vortices < 2:
+            self.wormhole_history.append(0)
+            return 0
 
-        # Extract angular positions (theta in spherical coords)
-        for i, v1 in enumerate(vortices):
-            for v2 in vortices[i+1:]:
-                # Check if on different strips
-                strip1 = strip_indices[v1['node_idx']].item()
-                strip2 = strip_indices[v2['node_idx']].item()
+        # Get vortex strips and positions (all GPU operations)
+        vortex_strips = strip_indices[vortex_indices]  # [N]
+        vortex_positions = positions[vortex_indices]  # [N, 3]
+        vortex_charges = vortex_dict['charge']  # [N]
 
-                if strip1 == strip2:
-                    continue  # Same strip, not a wormhole
+        # Compute all pairwise differences using broadcasting
+        # Shape: [N, 1, 3] - [1, N, 3] = [N, N, 3]
+        pos_diff = vortex_positions.unsqueeze(1) - vortex_positions.unsqueeze(0)
 
-                # Get positions
-                pos1 = positions[v1['node_idx']]
-                pos2 = positions[v2['node_idx']]
+        # Compute spherical coordinates for all vortices
+        r = torch.norm(vortex_positions, dim=1, keepdim=True)  # [N, 1]
+        theta = torch.acos(vortex_positions[:, 2:3] / (r + 1e-8))  # [N, 1]
+        phi = torch.atan2(vortex_positions[:, 1:2], vortex_positions[:, 0:1])  # [N, 1]
 
-                # Compute angular positions (theta, phi in spherical)
-                r1 = torch.norm(pos1)
-                r2 = torch.norm(pos2)
+        # Pairwise angular differences (broadcasting)
+        theta_diff = torch.abs(theta - theta.t())  # [N, N]
+        phi_diff = torch.abs(phi - phi.t())  # [N, N]
 
-                # theta (polar angle from z-axis)
-                theta1 = torch.acos(pos1[2] / (r1 + 1e-8))
-                theta2 = torch.acos(pos2[2] / (r2 + 1e-8))
+        # Wrap phi differences to [-pi, pi]
+        phi_diff = torch.where(phi_diff > np.pi, 2*np.pi - phi_diff, phi_diff)
 
-                # phi (azimuthal angle in xy-plane)
-                phi1 = torch.atan2(pos1[1], pos1[0])
-                phi2 = torch.atan2(pos2[1], pos2[0])
+        # Check alignment criteria (vectorized)
+        angular_aligned = (theta_diff < self.angular_threshold) & (phi_diff < self.angular_threshold)
 
-                # Check angular alignment (both theta and phi)
-                theta_diff = torch.abs(theta1 - theta2).item()
-                phi_diff = torch.abs(phi1 - phi2).item()
+        # Check if on different strips
+        strip_diff = vortex_strips.unsqueeze(1) != vortex_strips.unsqueeze(0)  # [N, N]
 
-                # Wrap phi difference to [-pi, pi]
-                if phi_diff > np.pi:
-                    phi_diff = 2*np.pi - phi_diff
+        # Combined wormhole criteria
+        wormhole_mask = angular_aligned & strip_diff
 
-                # Aligned if both angles close
-                aligned = (theta_diff < self.angular_threshold and
-                          phi_diff < self.angular_threshold)
+        # Only count upper triangle (avoid double-counting pairs)
+        triu_mask = torch.triu(torch.ones_like(wormhole_mask, dtype=torch.bool), diagonal=1)
+        wormhole_mask = wormhole_mask & triu_mask
 
-                if aligned:
-                    # Check charge conservation (opposite charges)
-                    charge1 = v1.get('charge', 0)
-                    charge2 = v2.get('charge', 0)
-                    charge_sum = abs(charge1 + charge2)
-
-                    # Geometric distance
-                    distance = torch.norm(pos2 - pos1).item()
-                    strip_separation = abs(strip2 - strip1)
-
-                    wormhole = {
-                        'strip_start': min(strip1, strip2),
-                        'strip_end': max(strip1, strip2),
-                        'strip_separation': strip_separation,
-                        'node1': v1['node_idx'],
-                        'node2': v2['node_idx'],
-                        'theta_alignment': theta_diff,
-                        'phi_alignment': phi_diff,
-                        'charge1': charge1,
-                        'charge2': charge2,
-                        'charge_conservation': charge_sum < self.charge_tolerance,
-                        'geometric_distance': distance,
-                        'radial_distance': abs(r1 - r2).item()
-                    }
-
-                    wormholes.append(wormhole)
+        # Count wormholes
+        num_wormholes = wormhole_mask.sum().item()
 
         # Track history
-        self.wormhole_history.append(len(wormholes))
+        self.wormhole_history.append(num_wormholes)
 
-        return wormholes
+        return num_wormholes
 
-    def compute_radial_transport_speed(self, field, strip_indices, num_strips):
+    def detect_wormholes(self, vortices, strip_indices, positions):
+        """Legacy wrapper for compatibility - converts old format to GPU format"""
+        # Convert list of dicts to tensor dict format
+        if len(vortices) == 0:
+            self.wormhole_history.append(0)
+            return []
+
+        device = positions.device
+        vortex_dict = {
+            'node_idx': torch.tensor([v['node_idx'] for v in vortices], device=device),
+            'charge': torch.tensor([v['charge'] for v in vortices], device=device),
+            'amplitude': torch.tensor([v['amplitude'] for v in vortices], device=device),
+            'phase': torch.tensor([v['phase'] for v in vortices], device=device)
+        }
+
+        num_wormholes = self.detect_wormholes_gpu(vortex_dict, strip_indices, positions)
+        # Return empty list for compatibility (count is tracked in history)
+        return []
+
+    def compute_radial_transport_speed_gpu(self, field, strip_indices, num_strips):
         """
-        Measure radial transport speed (diffusion vs. wormhole tunneling)
+        GPU-accelerated radial transport speed computation.
 
         Returns:
             Dictionary with transport metrics
         """
-        # Compute field intensity per strip
-        strip_intensities = []
-        for strip_id in range(num_strips):
-            strip_mask = (strip_indices == strip_id)
-            if strip_mask.sum() > 0:
-                intensity = torch.abs(field[strip_mask]).mean().item()
-                strip_intensities.append(intensity)
-            else:
-                strip_intensities.append(0.0)
+        # Compute field intensity (GPU operation)
+        field_intensity = torch.abs(field)
 
-        # Compute radial gradient (how fast intensity changes with radius)
-        gradient = np.gradient(strip_intensities)
+        # Use scatter_mean to compute per-strip intensities (vectorized)
+        strip_intensities = torch.zeros(num_strips, device=field.device)
+        strip_counts = torch.zeros(num_strips, device=field.device)
+
+        # Count nodes per strip and sum intensities
+        strip_intensities.scatter_add_(0, strip_indices, field_intensity)
+        strip_counts.scatter_add_(0, strip_indices, torch.ones_like(field_intensity))
+
+        # Compute mean intensity per strip (avoid divide by zero)
+        strip_counts = torch.clamp(strip_counts, min=1.0)
+        strip_intensities = strip_intensities / strip_counts
+
+        # Compute gradient on GPU
+        gradient = strip_intensities[1:] - strip_intensities[:-1]
 
         return {
-            'strip_intensities': strip_intensities,
-            'radial_gradient': gradient.tolist(),
-            'max_gradient': float(np.max(np.abs(gradient))),
-            'gradient_variance': float(np.var(gradient))
+            'max_gradient': gradient.abs().max().item(),
+            'gradient_variance': gradient.var().item()
         }
 
+    def compute_radial_transport_speed(self, field, strip_indices, num_strips):
+        """Legacy wrapper - uses GPU version"""
+        return self.compute_radial_transport_speed_gpu(field, strip_indices, num_strips)
 
-def compute_reward(tokamak, field_forward, field_backward, wormholes):
+
+def compute_reward(tokamak, field_forward, field_backward, num_wormholes):
     """
-    Compute reward for tokamak training
+    GPU-accelerated reward computation for tokamak training.
 
     Components:
     1. Temporal fixed points (main objective)
@@ -226,20 +243,26 @@ def compute_reward(tokamak, field_forward, field_backward, wormholes):
     vortex_reward = 50.0 * (vortex_density - 0.2)  # Target ~20% vortex density
 
     # 3. Wormhole bonus (encourage emergent wormholes)
-    num_wormholes = len(wormholes)
     wormhole_bonus = 10.0 * min(num_wormholes, 10)  # Cap at 10 wormholes
 
-    # 4. Strip uniformity (prevent single-strip dominance)
-    strip_field_means = []
-    for strip_id in range(tokamak.num_strips):
-        strip_mask = (tokamak.strip_indices == strip_id)
-        if strip_mask.sum() > 0:
-            strip_mean = torch.abs(field_forward[strip_mask]).mean().item()
-            strip_field_means.append(strip_mean)
+    # 4. Strip uniformity (GPU-accelerated using scatter operations)
+    strip_intensities = torch.zeros(tokamak.num_strips, device=field_forward.device)
+    strip_counts = torch.zeros(tokamak.num_strips, device=field_forward.device)
 
-    if len(strip_field_means) > 0:
-        uniformity = 1.0 - (np.std(strip_field_means) / (np.mean(strip_field_means) + 1e-8))
-        uniformity_reward = 20.0 * max(0, uniformity)
+    # Compute per-strip mean intensity
+    strip_intensities.scatter_add_(0, tokamak.strip_indices, torch.abs(field_forward))
+    strip_counts.scatter_add_(0, tokamak.strip_indices, torch.ones_like(field_forward.real))
+
+    # Compute means (avoid divide by zero)
+    strip_counts = torch.clamp(strip_counts, min=1.0)
+    strip_means = strip_intensities / strip_counts
+
+    # Compute uniformity from standard deviation
+    if strip_means.numel() > 0:
+        mean_intensity = strip_means.mean()
+        std_intensity = strip_means.std()
+        uniformity = 1.0 - (std_intensity / (mean_intensity + 1e-8))
+        uniformity_reward = 20.0 * max(0, uniformity.item())
     else:
         uniformity_reward = 0.0
 
@@ -299,41 +322,34 @@ def train_tokamak_wormhole_hunt(args):
     total_nodes = tokamak.total_nodes
     print()
 
-    # Initialize spatiotemporal dynamics
-    print("Initializing temporal dynamics...")
-    temporal_evolver = TemporalEvolver(
+    # Initialize retrocausal coupling (GPU-parallelized)
+    print("Initializing retrocausal coupling...")
+    retrocausal_coupler = RetrocausalCoupler(
         num_nodes=total_nodes,
         num_time_steps=args.num_time_steps,
+        retrocausal_strength=0.7,
+        prophetic_mixing=0.3,
         device=device
     )
 
-    # Create wrapper for coupled evolution
-    class TemporalDynamicsWrapper:
-        """Simple wrapper for coupled temporal evolution"""
-        def __init__(self, evolver, edge_index, positions):
-            self.evolver = evolver
-            self.edge_index = edge_index
-            self.positions = positions
+    # Wrapper for evolve_coupled API compatibility
+    class RetrocausalWrapper:
+        def __init__(self, coupler):
+            self.coupler = coupler
 
         def evolve_coupled(self, field_forward, field_backward,
                           coupling_forward=0.1, coupling_backward=0.1,
                           coupling_retrocausal=0.05, diffusion_coeff=0.01,
                           num_steps=1):
-            """Simple forward evolution for now"""
-            # For simplicity, just evolve forward direction
-            for t_idx in range(self.evolver.num_time_steps - 1):
-                field_forward[:, t_idx+1] = self.evolver.evolve_forward_step(
-                    field_forward, t_idx,
-                    spatial_coupling=coupling_forward,
-                    temporal_coupling=diffusion_coeff
-                )[:, t_idx+1]
+            # Apply retrocausal coupling (all time steps in parallel)
+            return self.coupler.apply_coupling(
+                field_forward, field_backward,
+                enable_mixing=True,
+                enable_swapping=True,
+                enable_anchoring=True
+            )
 
-            # Backward is just copy for now (simplified)
-            field_backward = field_forward.clone()
-
-            return field_forward, field_backward
-
-    temporal_dynamics = TemporalDynamicsWrapper(temporal_evolver, tokamak.edge_index, tokamak.positions)
+    temporal_dynamics = RetrocausalWrapper(retrocausal_coupler)
     print()
 
     # Initialize fields with self-consistent boundary conditions
@@ -358,7 +374,7 @@ def train_tokamak_wormhole_hunt(args):
     )
 
     optimizer = torch.optim.Adam(rnn.parameters(), lr=1e-4)
-    scaler = torch.cuda.amp.GradScaler() if device.type == 'cuda' else None
+    scaler = None  # Disabled for stability if device.type == 'cuda' else None
     print()
 
     # Initialize wormhole detector
@@ -438,17 +454,17 @@ def train_tokamak_wormhole_hunt(args):
                 num_steps=1
             )
 
-        # Detect vortices
-        vortices_forward = detect_temporal_vortices(
+        # Detect vortices (GPU-accelerated)
+        vortex_dict = detect_temporal_vortices_gpu(
             field_forward[:, 0],  # First time slice
             tokamak.positions,
             vortex_threshold=0.1,
             phase_grad_threshold=1.0
         )
 
-        # Detect wormholes
-        wormholes = wormhole_detector.detect_wormholes(
-            vortices_forward,
+        # Detect wormholes (GPU-accelerated)
+        num_wormholes = wormhole_detector.detect_wormholes_gpu(
+            vortex_dict,
             tokamak.strip_indices,
             tokamak.positions
         )
@@ -462,7 +478,7 @@ def train_tokamak_wormhole_hunt(args):
 
         # Compute reward
         reward_value, reward_breakdown = compute_reward(
-            tokamak, field_forward[:, 0], field_backward[:, 0], wormholes
+            tokamak, field_forward[:, 0], field_backward[:, 0], num_wormholes
         )
 
         # Backpropagation
@@ -473,11 +489,7 @@ def train_tokamak_wormhole_hunt(args):
         if scaler:
             scaler.scale(loss).backward()
 
-            # Gradient clipping
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
-
-            # Check for NaN
+            # Check for NaN before unscaling
             has_nan_grad = any(
                 param.grad is not None and torch.isnan(param.grad).any()
                 for param in rnn.parameters()
@@ -486,8 +498,11 @@ def train_tokamak_wormhole_hunt(args):
             if has_nan_grad:
                 print(f"WARNING: NaN detected in RNN gradients (cycle {cycle}), skipping update")
                 optimizer.zero_grad()
-                scaler.update()
+                scaler.update()  # Update scale factor but skip step
             else:
+                # Gradient clipping
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
                 scaler.step(optimizer)
                 scaler.update()
         else:
@@ -506,15 +521,15 @@ def train_tokamak_wormhole_hunt(args):
         metrics['reward_components'].append(reward_breakdown)
         metrics['fixed_point_percentages'].append(pct_fixed)
         metrics['divergences'].append(divergence)
-        metrics['vortex_counts'].append(len(vortices_forward))
-        metrics['wormhole_counts'].append(len(wormholes))
+        metrics['vortex_counts'].append(len(vortex_dict["node_idx"]))
+        metrics['wormhole_counts'].append(num_wormholes)
         metrics['radial_transport'].append(transport)
 
         # Save best wormholes
-        if len(wormholes) > 0:
+        if num_wormholes > 0:
             metrics['wormhole_details'].append({
                 'cycle': cycle,
-                'wormholes': wormholes
+                'wormholes': num_wormholes
             })
 
         # Track best checkpoint
@@ -526,7 +541,7 @@ def train_tokamak_wormhole_hunt(args):
                 'rnn_state': rnn.state_dict(),
                 'field_forward': field_forward.cpu(),
                 'field_backward': field_backward.cpu(),
-                'wormholes': wormholes
+                'wormholes': num_wormholes
             }
 
         # Logging
@@ -542,10 +557,10 @@ def train_tokamak_wormhole_hunt(args):
                   f"uni={reward_breakdown['uniformity']:.1f})")
             print(f"  Fixed points: {pct_fixed:.1f}% ({num_fixed}/{total_points})")
             print(f"  Divergence: {divergence:.6f}")
-            print(f"  Vortices: {len(vortices_forward)}")
-            print(f"  Wormholes: {len(wormholes)}")
-            if len(wormholes) > 0:
-                avg_separation = np.mean([w['strip_separation'] for w in wormholes])
+            print(f"  Vortices: {len(vortex_dict["node_idx"])}")
+            print(f"  Wormholes: {num_wormholes}")
+            if num_wormholes > 0:
+                avg_separation = 0  # Placeholder - actual wormhole list not stored
                 print(f"    Avg strip separation: {avg_separation:.1f}")
             print(f"  Radial transport: max_gradient={transport['max_gradient']:.4f}")
             print(f"  Speed: {cycle_time:.2f}s/cycle, ETA: {eta/60:.1f} min")
@@ -637,7 +652,7 @@ def main():
                        help='Nodes per strip (default: 166, total ~50K nodes)')
 
     # Temporal parameters
-    parser.add_argument('--num-time-steps', type=int, default=100,
+    parser.add_argument('--num-time-steps', type=int, default=10,
                        help='Temporal evolution steps (default: 100)')
 
     # Training parameters
@@ -652,13 +667,6 @@ def main():
                        help='Output directory')
 
     args = parser.parse_args()
-
-    # Auto-optimize num_time_steps for long runs (unless explicitly set)
-    # Temporal evolution is expensive - use minimal steps for long runs
-    if args.num_time_steps == 100 and args.num_cycles >= 100:
-        args.num_time_steps = 5  # Minimal temporal resolution for speed
-        print(f"Auto-optimized: num_time_steps reduced to {args.num_time_steps} for long run")
-        print()
 
     return train_tokamak_wormhole_hunt(args)
 
