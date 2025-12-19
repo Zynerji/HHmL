@@ -347,10 +347,8 @@ def train_tokamak_wormhole_hunt(args):
     # Initialize RNN controller (39 parameters)
     print("Initializing RNN controller...")
     rnn = SpatiotemporalRNN(
-        input_dim=10,  # State features
+        state_dim=10,  # State features (2 global + 8 per-strip samples)
         hidden_dim=4096,  # Large hidden state for complex dynamics
-        output_dim=39,  # 39 control parameters
-        num_layers=4,
         device=device
     )
 
