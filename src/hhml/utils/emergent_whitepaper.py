@@ -465,7 +465,7 @@ The phenomenon's discrete energy levels were compared to Standard Model particle
 \textbf{{Results}}:
 \begin{{itemize}}
     \item Matched Particles: {matched}/{total}
-    \item Match Fraction: {fraction:.2\%}
+    \item Match Fraction: {fraction*100:.2f}\%
     \item Quality: {quality}
 \end{{itemize}}
 
