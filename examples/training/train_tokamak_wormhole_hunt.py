@@ -348,7 +348,8 @@ def train_tokamak_wormhole_hunt(args):
     print("Initializing RNN controller...")
 
     # Scale hidden_dim based on number of cycles (maximize VRAM for long runs)
-    hidden_dim = 16384 if args.num_cycles >= 100 else 4096
+    # Note: 16384 causes cuDNN overflow, 8192 is safe maximum
+    hidden_dim = 8192 if args.num_cycles >= 100 else 4096
 
     rnn = SpatiotemporalRNN(
         state_dim=10,  # State features (2 global + 8 per-strip samples)
