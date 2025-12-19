@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Spatiotemporal RNN - 32-Parameter Control
+Spatiotemporal RNN - 39-Parameter Control
 ==========================================
 
-Extends HHmL RNN from 23 → 32 parameters for spatiotemporal control.
+Extends HHmL RNN from 23 → 39 parameters for full spatiotemporal control.
 
 Parameter Breakdown:
 - 23 spatial parameters (inherited from HHmL)
-- 9 temporal parameters (NEW for tHHmL)
+- 9 temporal dynamics parameters (tHHmL)
+- 7 temporal vortex parameters (NEW - Phase 2)
 
-Total: 32 parameters controlling (2+1)D spacetime dynamics.
+Total: 39 parameters controlling (2+1)D spacetime dynamics including
+temporal vortices and spatiotemporal vortex tubes.
 
 Author: tHHmL Project (Spatiotemporal Mobius Lattice)
 Date: 2025-12-18
@@ -23,15 +25,16 @@ from typing import Dict
 
 class SpatiotemporalRNN(nn.Module):
     """
-    Extended RNN for spatiotemporal Möbius control.
+    Extended RNN for full spatiotemporal Möbius control.
 
     Architecture:
     - 4-layer LSTM with 4096 hidden dim (inherited from HHmL)
-    - 32 parameter heads:
+    - 39 parameter heads:
       * 23 spatial (HHmL parameters)
-      * 9 temporal (tHHmL parameters)
+      * 9 temporal dynamics (tHHmL Phase 1)
+      * 7 temporal vortex (tHHmL Phase 2 - NEW)
 
-    Temporal Parameters (NEW):
+    Temporal Dynamics Parameters (Phase 1):
     1. temporal_twist (τ): Temporal Möbius twist angle
     2. retrocausal_strength (α): Future-past coupling strength
     3. temporal_relaxation (β): Convergence damping factor
@@ -41,6 +44,15 @@ class SpatiotemporalRNN(nn.Module):
     7. temporal_decay (δ_t): Temporal dampening factor
     8. forward_backward_balance (ρ): Weighting between forward/backward
     9. temporal_noise_level (σ_t): Exploration noise in temporal evolution
+
+    Temporal Vortex Parameters (Phase 2 - NEW):
+    10. temporal_vortex_injection_rate (ν): Rate of temporal vortex injection
+    11. temporal_vortex_winding (n_t): Winding number for temporal vortices
+    12. temporal_vortex_core_size (ε_t): Size of temporal vortex cores
+    13. vortex_tube_probability (p_tube): Probability of tube formation
+    14. tube_winding_number (n_tube): Winding for spatiotemporal tubes
+    15. tube_core_size (ε_tube): Size of vortex tube cores
+    16. temporal_vortex_annihilation_rate (μ_t): Rate of temporal vortex removal
     """
 
     def __init__(
@@ -58,7 +70,7 @@ class SpatiotemporalRNN(nn.Module):
         print(f"Initializing Spatiotemporal RNN:")
         print(f"  Hidden dim: {hidden_dim}")
         print(f"  State dim: {state_dim}")
-        print(f"  Total parameters: 32 (23 spatial + 9 temporal)")
+        print(f"  Total parameters: 39 (23 spatial + 9 temporal + 7 vortex)")
         print(f"  Device: {device}")
 
         # 4-layer LSTM (inherited from HHmL)
@@ -131,7 +143,19 @@ class SpatiotemporalRNN(nn.Module):
         self.forward_backward_balance_head = self._make_param_head() # ρ
         self.temporal_noise_level_head = self._make_param_head()     # σ_t
 
-        print("  Parameter heads initialized (32 total)")
+        # =====================================================================
+        # Temporal Vortex Parameter Heads (7 parameters - NEW Phase 2)
+        # =====================================================================
+
+        self.temporal_vortex_injection_rate_head = self._make_param_head()      # ν
+        self.temporal_vortex_winding_head = self._make_param_head()             # n_t
+        self.temporal_vortex_core_size_head = self._make_param_head()           # ε_t
+        self.vortex_tube_probability_head = self._make_param_head()             # p_tube
+        self.tube_winding_number_head = self._make_param_head()                 # n_tube
+        self.tube_core_size_head = self._make_param_head()                      # ε_tube
+        self.temporal_vortex_annihilation_rate_head = self._make_param_head()   # μ_t
+
+        print("  Parameter heads initialized (39 total)")
 
     def _make_param_head(self) -> nn.Module:
         """Create a parameter head network."""
@@ -144,14 +168,14 @@ class SpatiotemporalRNN(nn.Module):
 
     def forward(self, state: torch.Tensor, hidden=None) -> Dict[str, torch.Tensor]:
         """
-        Forward pass: state → 32 parameters + value.
+        Forward pass: state → 39 parameters + value.
 
         Args:
             state: Input state tensor (batch, seq_len, state_dim)
             hidden: Optional LSTM hidden state
 
         Returns:
-            parameters: Dictionary of 32 parameters + value
+            parameters: Dictionary of 39 parameters + value
         """
         # RNN encoding
         if hidden is None:
@@ -200,7 +224,7 @@ class SpatiotemporalRNN(nn.Module):
         }
 
         # =====================================================================
-        # Temporal Parameters (9 - NEW)
+        # Temporal Dynamics Parameters (9 - Phase 1)
         # =====================================================================
 
         temporal_params = {
@@ -215,8 +239,22 @@ class SpatiotemporalRNN(nn.Module):
             'temporal_noise_level': self.temporal_noise_level_head(h_last).squeeze(),
         }
 
+        # =====================================================================
+        # Temporal Vortex Parameters (7 - Phase 2 NEW)
+        # =====================================================================
+
+        vortex_params = {
+            'temporal_vortex_injection_rate': self.temporal_vortex_injection_rate_head(h_last).squeeze(),
+            'temporal_vortex_winding': self.temporal_vortex_winding_head(h_last).squeeze(),
+            'temporal_vortex_core_size': self.temporal_vortex_core_size_head(h_last).squeeze(),
+            'vortex_tube_probability': self.vortex_tube_probability_head(h_last).squeeze(),
+            'tube_winding_number': self.tube_winding_number_head(h_last).squeeze(),
+            'tube_core_size': self.tube_core_size_head(h_last).squeeze(),
+            'temporal_vortex_annihilation_rate': self.temporal_vortex_annihilation_rate_head(h_last).squeeze(),
+        }
+
         # Combine all parameters
-        all_params = {**spatial_params, **temporal_params, 'value': value.squeeze()}
+        all_params = {**spatial_params, **temporal_params, **vortex_params, 'value': value.squeeze()}
 
         return all_params, hidden
 
@@ -241,7 +279,7 @@ class SpatiotemporalRNN(nn.Module):
         rescaled['lambda'] = 0.5 + 4.5 * params['lambda']  # [0.5, 5.0]
         # ... (add all 23 spatial parameters rescaling)
 
-        # Temporal parameters (NEW)
+        # Temporal dynamics parameters (Phase 1)
         rescaled['temporal_twist'] = np.pi * params['temporal_twist']  # [0, π]
         rescaled['retrocausal_strength'] = params['retrocausal_strength']  # [0, 1]
         rescaled['temporal_relaxation'] = 0.1 + 0.9 * params['temporal_relaxation']  # [0.1, 1.0]
@@ -251,5 +289,14 @@ class SpatiotemporalRNN(nn.Module):
         rescaled['temporal_decay'] = params['temporal_decay']  # [0, 1]
         rescaled['forward_backward_balance'] = params['forward_backward_balance']  # [0, 1]
         rescaled['temporal_noise_level'] = 0.01 * params['temporal_noise_level']  # [0, 0.01]
+
+        # Temporal vortex parameters (Phase 2 - NEW)
+        rescaled['temporal_vortex_injection_rate'] = params['temporal_vortex_injection_rate']  # [0, 1] probability
+        rescaled['temporal_vortex_winding'] = 1 + int(4 * params['temporal_vortex_winding'])  # [1, 5] integer winding
+        rescaled['temporal_vortex_core_size'] = 0.01 + 0.49 * params['temporal_vortex_core_size']  # [0.01, 0.5]
+        rescaled['vortex_tube_probability'] = params['vortex_tube_probability']  # [0, 1] probability
+        rescaled['tube_winding_number'] = 1 + int(4 * params['tube_winding_number'])  # [1, 5] integer winding
+        rescaled['tube_core_size'] = 0.01 + 0.49 * params['tube_core_size']  # [0.01, 0.5]
+        rescaled['temporal_vortex_annihilation_rate'] = params['temporal_vortex_annihilation_rate']  # [0, 1] probability
 
         return rescaled

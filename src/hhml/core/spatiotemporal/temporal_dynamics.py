@@ -92,7 +92,14 @@ class TemporalEvolver(nn.Module):
         delta_temporal = temporal_coupling * psi_t
 
         # Update field at t+1
-        field[:, t_idx + 1] = psi_t + delta_spatial + delta_temporal
+        psi_next = psi_t + delta_spatial + delta_temporal
+        
+        # STABILITY FIX: Normalize to prevent exponential growth
+        field_mag = torch.abs(psi_next).mean()
+        if field_mag > 10.0:
+            psi_next = psi_next * (10.0 / field_mag)
+        
+        field[:, t_idx + 1] = psi_next
 
         return field
 
@@ -135,7 +142,14 @@ class TemporalEvolver(nn.Module):
         delta_temporal = -temporal_coupling * psi_t  # Negative for backward
 
         # Update field at t-1
-        field[:, t_idx - 1] = psi_t + delta_spatial + delta_temporal
+        psi_prev = psi_t + delta_spatial + delta_temporal
+        
+        # STABILITY FIX: Normalize to prevent exponential growth
+        field_mag = torch.abs(psi_prev).mean()
+        if field_mag > 10.0:
+            psi_prev = psi_prev * (10.0 / field_mag)
+        
+        field[:, t_idx - 1] = psi_prev
 
         return field
 

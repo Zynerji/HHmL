@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
-Spatiotemporal Möbius Training - H200 Optimized
-===============================================
+Spatiotemporal Möbius Training - H200 Optimized with Emergent Verification
+==========================================================================
 
-H200-optimized version for large-scale spatiotemporal training:
+H200-optimized version for large-scale spatiotemporal training with
+automated emergent phenomenon verification against real-world physics:
 - 4K-20K nodes (optimized for H200 memory)
 - 50-100 time steps
 - 100-1000 cycles
 - Mixed precision training (FP16)
 - Gradient accumulation
 - Optimized batch processing
+- LIGO/CMB/Particle verification
+- Automated whitepaper generation
 
 Author: tHHmL Project (Spatiotemporal Mobius Lattice)
 Date: 2025-12-18
@@ -34,6 +37,8 @@ from hhml.core.spatiotemporal import (
     RetrocausalCoupler
 )
 from hhml.ml.training.spatiotemporal_rnn import SpatiotemporalRNN
+from hhml.utils.emergent_verifier import EmergentVerifier
+from hhml.utils.emergent_whitepaper import EmergentWhitepaperGenerator
 
 
 def parse_args():
@@ -349,23 +354,184 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_file = output_dir / f'training_{timestamp}.json'
 
+    final_results = {
+        'config': vars(args),
+        'metrics': metrics_history,
+        'final': {
+            'divergence': divergence,
+            'fixed_points': num_fixed,
+            'fixed_point_pct': pct_fixed,
+            'reward': reward_value
+        },
+        'timing': {
+            'total_seconds': elapsed_time,
+            'average_cycle_seconds': elapsed_time / args.num_cycles
+        }
+    }
+
     with open(results_file, 'w') as f:
-        json.dump({
-            'config': vars(args),
-            'metrics': metrics_history,
-            'final': {
-                'divergence': divergence,
-                'fixed_points': num_fixed,
-                'fixed_point_pct': pct_fixed,
-                'reward': reward_value
-            },
-            'timing': {
-                'total_seconds': elapsed_time,
-                'average_cycle_seconds': elapsed_time / args.num_cycles
-            }
-        }, f, indent=2)
+        json.dump(final_results, f, indent=2)
 
     print(f"Results saved: {results_file}")
+    print()
+
+    # =========================================================================
+    # EMERGENT PHENOMENON VERIFICATION (MANDATORY)
+    # =========================================================================
+
+    print("="*80)
+    print("EMERGENT PHENOMENON VERIFICATION")
+    print("="*80)
+    print()
+
+    # Only verify if results meet quality threshold
+    # Threshold: At least 50% temporal fixed points achieved
+    if pct_fixed >= 50.0:
+        print(f"Results meet threshold for emergent verification (fixed points: {pct_fixed:.1f}%)")
+        print()
+
+        # Prepare discovery data
+        discovery_data = {
+            'phenomenon_name': 'Spatiotemporal Fixed Point Convergence',
+            'training_run': str(Path(__file__)),
+            'discovery_cycle': args.num_cycles - 1,  # Final cycle
+            'timestamp': timestamp,
+            'random_seed': args.seed,
+            'hardware': {
+                'device': args.device,
+                'gpu_name': torch.cuda.get_device_name(0) if args.device == 'cuda' else 'CPU',
+                'vram_gb': torch.cuda.get_device_properties(0).total_memory / 1e9 if args.device == 'cuda' else None,
+                'hardware_tier': 'H200' if args.device == 'cuda' else 'CPU',
+                'auto_scaled': False
+            },
+            'system_size': {
+                'nodes': args.num_nodes,
+                'time_steps': args.num_time_steps,
+                'total_dof': args.num_nodes * args.num_time_steps
+            },
+            'parameters': {
+                'temporal_twist': float(params_rescaled['temporal_twist'].detach()),
+                'retrocausal_strength': float(params_rescaled['retrocausal_strength'].detach()),
+                'temporal_relaxation': float(params_rescaled['temporal_relaxation'].detach()),
+                'num_time_steps': float(params_rescaled['num_time_steps'].detach()),
+                'prophetic_coupling': float(params_rescaled['prophetic_coupling'].detach())
+            },
+            'key_metrics': {
+                'final_divergence': divergence,
+                'final_fixed_points': num_fixed,
+                'final_fixed_point_pct': pct_fixed,
+                'final_reward': reward_value,
+                'peak_fixed_point_pct': max(metrics_history['fixed_point_percentages']),
+                'mean_divergence': np.mean(metrics_history['divergences']),
+                'min_divergence': min(metrics_history['divergences'])
+            },
+            'correlations': {
+                # Parameter-observable correlations (can be computed post-hoc)
+                'temporal_twist_vs_fixed_points': {
+                    'r': 0.0,  # Placeholder - compute from metrics_history if needed
+                    'p': 1.0
+                }
+            },
+            'checkpoint': str(checkpoint_file) if (args.num_cycles % args.checkpoint_every == 0) else 'N/A',
+            'configuration': vars(args)
+        }
+
+        # Initialize verifier
+        print("Initializing EmergentVerifier...")
+        verifier = EmergentVerifier(data_dir="data")
+        print()
+
+        # Combine forward and backward fields for verification
+        # Shape: (num_time_steps, num_nodes) - temporal evolution
+        combined_field = torch.stack([
+            spacetime.field_forward.T,  # Transpose to (time, nodes)
+            spacetime.field_backward.T
+        ], dim=0).mean(dim=0)  # Average forward/backward
+
+        # Run verification
+        print("Running automated verification against real-world physics...")
+        print("  - LIGO: Gravitational wave comparison")
+        print("  - CMB: Cosmic microwave background comparison")
+        print("  - Particles: Standard model mass comparison")
+        print()
+
+        verification_results = verifier.verify_phenomenon(
+            field_tensor=combined_field,
+            phenomenon_type='auto',  # Auto-detect from field properties
+            save_results=True,
+            output_dir=str(output_dir / "verification")
+        )
+
+        print(f"Verification complete:")
+        print(f"  Novelty score: {verification_results['novelty_score']:.3f}")
+        print(f"  Is novel: {verification_results['is_novel']}")
+        print(f"  Interpretation: {verification_results['interpretation']}")
+        print()
+
+        # Print recommendations
+        if verification_results.get('recommendations'):
+            print("Recommendations:")
+            for rec in verification_results['recommendations']:
+                print(f"  {rec}")
+            print()
+
+        # Generate whitepaper
+        print("Generating comprehensive whitepaper...")
+        generator = EmergentWhitepaperGenerator()
+
+        try:
+            whitepaper_path = generator.generate(
+                phenomenon_name=discovery_data['phenomenon_name'],
+                discovery_data=discovery_data,
+                verification_results=verification_results,
+                output_dir=str(output_dir / "whitepapers" / "EMERGENTS"),
+                compile_pdf=True
+            )
+
+            print(f"Whitepaper generated: {whitepaper_path}")
+            print()
+
+            if verification_results['is_novel']:
+                print("="*80)
+                print("NOVEL EMERGENT PHENOMENON DETECTED")
+                print("="*80)
+                print()
+                print("ACTION REQUIRED:")
+                print("1. Review whitepaper for scientific accuracy")
+                print("2. Update EMERGENTS.md with full discovery template")
+                print("3. Update README.md if this represents new capability")
+                print("4. Commit results with detailed message")
+                print()
+            else:
+                print("="*80)
+                print("RESULTS DOCUMENTED")
+                print("="*80)
+                print()
+                print("Phenomenon documented but does not meet novelty threshold.")
+                print("Review whitepaper for detailed analysis.")
+                print()
+
+        except Exception as e:
+            print(f"Warning: Whitepaper generation failed: {e}")
+            print("Verification results saved, but PDF not generated.")
+            print()
+
+        # Add verification to results
+        final_results['emergent_verification'] = {
+            'novelty_score': verification_results['novelty_score'],
+            'is_novel': verification_results['is_novel'],
+            'interpretation': verification_results['interpretation'],
+            'verification_file': verification_results.get('output_file', 'N/A')
+        }
+
+        # Re-save results with verification
+        with open(results_file, 'w') as f:
+            json.dump(final_results, f, indent=2)
+
+    else:
+        print(f"Results do not meet threshold for verification (fixed points: {pct_fixed:.1f}% < 50%)")
+        print("Skipping emergent verification.")
+        print()
 
     return 0
 

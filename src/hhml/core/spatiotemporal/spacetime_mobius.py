@@ -102,8 +102,8 @@ class SpatiotemporalMobiusStrip(nn.Module):
         if seed is not None:
             torch.manual_seed(seed)
 
-        # Generate initial spatial field at t=0
-        initial_state = torch.randn(
+        # Generate initial spatial field at t=0 with small, stable values
+        initial_state = 0.1 * torch.randn(
             self.num_nodes,
             dtype=torch.complex64,
             device=self.device
@@ -113,9 +113,12 @@ class SpatiotemporalMobiusStrip(nn.Module):
         self.field_forward[:, 0] = initial_state.clone()
         self.field_backward[:, 0] = initial_state.clone()
 
-        # Remaining time steps initialized to zero (will evolve)
-        self.field_forward[:, 1:] = 0
-        self.field_backward[:, 1:] = 0
+        # Initialize remaining time steps with smooth temporal decay (not zeros)
+        # This prevents numerical instabilities from abrupt discontinuities
+        for t in range(1, self.num_time_steps):
+            decay_factor = (self.num_time_steps - t) / self.num_time_steps
+            self.field_forward[:, t] = initial_state * (0.1 * decay_factor)
+            self.field_backward[:, t] = initial_state * (0.1 * decay_factor)
 
         print(f"Self-consistent initialization: psi_f(t=0) = psi_b(t=0)")
 

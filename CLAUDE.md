@@ -1342,6 +1342,83 @@ python hhml/mobius/mobius_training.py \
   --output-dir ~/results/mobius_training
 ```
 
+### 🔄 CRITICAL: File Synchronization After H200 Testing
+
+**MANDATORY WORKFLOW**: When testing/training on H200 VM proves successful, ALWAYS copy modified files back to the local repository before committing to GitHub.
+
+#### Why This is Critical
+- H200 VM is the testing environment (remote)
+- Local repository is the source of truth (should mirror working code)
+- GitHub repo must receive the proven-working code from local repo
+- Skipping this step means GitHub gets outdated/broken code
+
+#### Standard Sync Workflow
+
+**After successful H200 test run:**
+
+```bash
+# 1. Copy ALL modified files from H200 to local repo
+# Training scripts
+scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/examples/training/*.py \
+    /c/Users/cknop/.local/bin/tHHmL/examples/training/
+
+# Core modules (if modified)
+scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/core/**/*.py \
+    /c/Users/cknop/.local/bin/tHHmL/src/hhml/core/
+
+# ML modules (if modified)
+scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/ml/**/*.py \
+    /c/Users/cknop/.local/bin/tHHmL/src/hhml/ml/
+
+# Utils (if modified)
+scp -i ~/.ssh/id_ed25519 ivhl@<VM_IP>:/home/ivhl/tHHmL/src/hhml/utils/*.py \
+    /c/Users/cknop/.local/bin/tHHmL/src/hhml/utils/
+
+# 2. Verify files copied successfully
+ls -lh /c/Users/cknop/.local/bin/tHHmL/examples/training/
+diff -q <local_file> <original_backup>  # Optional: check what changed
+
+# 3. Now safe to commit and push from local repo
+cd /c/Users/cknop/.local/bin/tHHmL
+git status
+git add <modified_files>
+git commit -m "fix: <description of fixes tested successfully on H200>"
+git push origin main
+```
+
+#### Quick Reference: Files Commonly Modified on H200
+
+```bash
+# Training scripts (examples/training/)
+- train_single_h200_emergent_hunt.py
+- train_ensemble_h200_emergent_hunt.py
+
+# Core modules (src/hhml/core/spatiotemporal/)
+- spacetime_mobius.py        # Field initialization
+- temporal_dynamics.py        # Evolution equations
+- temporal_vortex.py          # Vortex detection
+- retrocausal_coupling.py     # Retrocausal coupling
+
+# ML modules (src/hhml/ml/training/)
+- spatiotemporal_rnn.py       # RNN architecture
+
+# Utils (src/hhml/utils/)
+- emergent_verifier.py        # Emergent verification
+- emergent_whitepaper.py      # Whitepaper generation
+```
+
+#### Checklist Before Committing
+
+- [ ] Training/test completed successfully on H200 (exit code 0)
+- [ ] ALL modified files copied from H200 to local repo
+- [ ] Verified file timestamps are recent (modified today)
+- [ ] Ran `git diff` to review changes
+- [ ] Commit message describes what was tested/fixed
+- [ ] Push to GitHub completes without conflicts
+
+**DO NOT**: Modify files on local then manually replicate changes on H200 → leads to drift and inconsistencies
+**DO**: Test on H200, copy successful changes back to local, commit from local
+
 ---
 
 ## How to Continue Development
