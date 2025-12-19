@@ -406,22 +406,20 @@ def train_tokamak_wormhole_hunt(args):
                 else:
                     state_features.append(torch.tensor(0.0, device=device))
 
-            state_tensor = torch.stack(state_features).unsqueeze(0)  # [1, 10]
+            state_tensor = torch.stack(state_features).unsqueeze(0).unsqueeze(0)  # [1, 1, 10] (batch, seq, features)
 
         # RNN forward pass (get control parameters)
         if scaler:
             with torch.cuda.amp.autocast():
-                rnn_output = rnn(state_tensor)  # [1, 39]
+                params_dict, hidden_state = rnn(state_tensor)
         else:
-            rnn_output = rnn(state_tensor)
+            params_dict, hidden_state = rnn(state_tensor)
 
-        params = rnn_output.squeeze(0)  # [39]
-
-        # Extract parameters (same as temporal loop training)
-        coupling_forward = torch.sigmoid(params[0]) * 2.0
-        coupling_backward = torch.sigmoid(params[1]) * 2.0
-        coupling_retrocausal = torch.sigmoid(params[2]) * 0.5
-        diffusion = torch.sigmoid(params[3]) * 0.1
+        # Extract parameters from dictionary (using lambda as coupling forward)
+        coupling_forward = params_dict['lambda'] * 0.5  # Spatial coupling
+        coupling_backward = params_dict['lambda'] * 0.5  # Same for backward
+        coupling_retrocausal = params_dict['retrocausal_strength'] * 0.1
+        diffusion = params_dict['retrocausal_strength'] * 0.05  # Use retrocausal for diffusion
 
         # Evolve fields with temporal dynamics
         with torch.no_grad():
