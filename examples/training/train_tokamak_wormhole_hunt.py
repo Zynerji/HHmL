@@ -654,9 +654,9 @@ def main():
     args = parser.parse_args()
 
     # Auto-optimize num_time_steps for long runs (unless explicitly set)
-    # Temporal evolution is expensive - use fewer steps for 800-cycle runs
+    # Temporal evolution is expensive - use minimal steps for long runs
     if args.num_time_steps == 100 and args.num_cycles >= 100:
-        args.num_time_steps = 30  # 3x faster, still captures temporal dynamics
+        args.num_time_steps = 5  # Minimal temporal resolution for speed
         print(f"Auto-optimized: num_time_steps reduced to {args.num_time_steps} for long run")
         print()
 
