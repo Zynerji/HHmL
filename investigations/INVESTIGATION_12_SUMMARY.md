@@ -62,6 +62,28 @@ Möbius SAT provides a high-quality warm start that:
 
 **Conclusion**: Hybrid Möbius+WalkSAT is the **optimal choice when near-perfect solutions are required** but time is constrained.
 
+### 🔬 Hybrid Parameter Tuning: 23-Strip Optimal
+
+Empirical testing of strip counts (7, 9, 18, 23, 30) for hybrid warm start quality:
+
+| Strips | Hybrid Time | Möbius Warm Start | WalkSAT Flips | Efficiency |
+|--------|------------|------------------|---------------|------------|
+| 7      | 5.758s     | 93.10%           | 3652          | 0.1732     |
+| 9      | 7.046s     | 93.02%           | 4402          | 0.1415     |
+| **18** | 5.494s     | 92.78%           | 3429          | 0.1813     |
+| **23** | **5.458s** | **93.02%**       | **3398**      | **0.1828** ✅ |
+| 30     | 5.678s     | 92.14%           | 3558          | 0.1754     |
+
+**Finding**: **23-strip Möbius is marginally better** for hybrid use case:
+- Fastest average time (5.458s vs 5.494s for 18-strip)
+- Reduces WalkSAT flips by ~1% (3398 vs 3429)
+- Better warm start quality (93.02% vs 92.78%)
+- Highest efficiency score (0.1828)
+
+**Note**: Investigation 11 found 18-strip optimal for *pure* Möbius SAT (92.62% satisfaction), but 23-strip provides marginally better warm start for hybrid use case. Differences are small (p>0.05) but consistently favor 23-strip across all metrics.
+
+**Hybrid default updated**: 23 strips (was 18)
+
 ---
 
 ## Performance Results

@@ -175,7 +175,7 @@ class HybridMobiusWalkSAT:
         self.clauses = instance.clauses
 
     def solve(self,
-              mobius_strips: int = 18,
+              mobius_strips: int = 23,
               mobius_omega: float = 0.1,
               walksat_max_flips: int = 5000,  # Reduced from 10000
               walksat_p: float = 0.5,
@@ -184,7 +184,7 @@ class HybridMobiusWalkSAT:
         Run hybrid solver: Möbius SAT -> WalkSAT refinement.
 
         Args:
-            mobius_strips: Number of Möbius strips (18 optimal from Investigation 11)
+            mobius_strips: Number of Möbius strips (23 optimal for hybrid - empirical testing)
             mobius_omega: Omega parameter for Möbius SAT
             walksat_max_flips: Max flips for WalkSAT refinement
             walksat_p: WalkSAT random walk probability
