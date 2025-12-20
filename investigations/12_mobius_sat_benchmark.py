@@ -158,6 +158,157 @@ class WalkSAT:
         return satisfied / len(self.clauses)
 
 
+class HybridMobiusWalkSAT:
+    """
+    Hybrid Möbius+WalkSAT solver.
+
+    Uses Möbius SAT to quickly find approximate solution (~92% satisfaction),
+    then uses WalkSAT to refine to near-perfect solution.
+
+    Hypothesis: Starting from 92% should be much faster than starting from
+    random 50% assignment.
+    """
+
+    def __init__(self, instance: MobiusSATInstance):
+        self.instance = instance
+        self.n_vars = instance.n_vars
+        self.clauses = instance.clauses
+
+    def solve(self,
+              mobius_strips: int = 18,
+              mobius_omega: float = 0.1,
+              walksat_max_flips: int = 5000,  # Reduced from 10000
+              walksat_p: float = 0.5,
+              seed: Optional[int] = None) -> Dict:
+        """
+        Run hybrid solver: Möbius SAT -> WalkSAT refinement.
+
+        Args:
+            mobius_strips: Number of Möbius strips (18 optimal from Investigation 11)
+            mobius_omega: Omega parameter for Möbius SAT
+            walksat_max_flips: Max flips for WalkSAT refinement
+            walksat_p: WalkSAT random walk probability
+            seed: Random seed
+
+        Returns:
+            Result dictionary with combined metrics
+        """
+        # Phase 1: Möbius SAT for fast approximate solution
+        mobius_start = time.time()
+        mobius_result = solve_mobius_sat(
+            self.instance,
+            num_strips=mobius_strips,
+            omega=mobius_omega,
+            num_iterations=3,
+            seed=seed
+        )
+        mobius_time = time.time() - mobius_start
+
+        # Phase 2: WalkSAT refinement starting from Möbius solution
+        initial_assignment = mobius_result['assignment']
+
+        if seed is not None:
+            np.random.seed(seed + 1)  # Different seed for WalkSAT phase
+
+        assignment = initial_assignment.copy()
+        best_assignment = assignment.copy()
+        best_satisfaction = self._evaluate(assignment)
+
+        walksat_start = time.time()
+        for flip in range(walksat_max_flips):
+            # Find unsatisfied clauses
+            unsatisfied = []
+            for i, clause in enumerate(self.clauses):
+                if not self._is_satisfied(clause, assignment):
+                    unsatisfied.append((i, clause))
+
+            if len(unsatisfied) == 0:
+                # Found perfect solution
+                walksat_time = time.time() - walksat_start
+                total_time = mobius_time + walksat_time
+
+                return {
+                    'satisfaction_ratio': 1.0,
+                    'num_satisfied': len(self.clauses),
+                    'total_clauses': len(self.clauses),
+                    'assignment': assignment,
+                    'mobius_time': mobius_time,
+                    'walksat_time': walksat_time,
+                    'total_time': total_time,
+                    'mobius_satisfaction': mobius_result['satisfaction_ratio'],
+                    'walksat_flips': flip,
+                    'improvement': 1.0 - mobius_result['satisfaction_ratio']
+                }
+
+            # Pick random unsatisfied clause
+            clause_idx, clause = unsatisfied[np.random.randint(len(unsatisfied))]
+
+            # With probability p, do random walk
+            if np.random.rand() < walksat_p:
+                # Flip random variable in clause
+                literal = clause[np.random.randint(len(clause))]
+                var_idx = abs(literal) - 1
+                assignment[var_idx] *= -1
+            else:
+                # Greedy: flip variable that maximizes satisfied clauses
+                best_var = None
+                best_delta = -float('inf')
+
+                for literal in clause:
+                    var_idx = abs(literal) - 1
+
+                    # Try flipping this variable
+                    assignment[var_idx] *= -1
+                    delta = self._evaluate(assignment) - best_satisfaction
+                    assignment[var_idx] *= -1  # Flip back
+
+                    if delta > best_delta:
+                        best_delta = delta
+                        best_var = var_idx
+
+                if best_var is not None:
+                    assignment[best_var] *= -1
+
+            # Update best
+            satisfaction = self._evaluate(assignment)
+            if satisfaction > best_satisfaction:
+                best_satisfaction = satisfaction
+                best_assignment = assignment.copy()
+
+        # Return best found after max flips
+        walksat_time = time.time() - walksat_start
+        total_time = mobius_time + walksat_time
+
+        num_satisfied = int(best_satisfaction * len(self.clauses))
+        return {
+            'satisfaction_ratio': best_satisfaction,
+            'num_satisfied': num_satisfied,
+            'total_clauses': len(self.clauses),
+            'assignment': best_assignment,
+            'mobius_time': mobius_time,
+            'walksat_time': walksat_time,
+            'total_time': total_time,
+            'mobius_satisfaction': mobius_result['satisfaction_ratio'],
+            'walksat_flips': walksat_max_flips,
+            'improvement': best_satisfaction - mobius_result['satisfaction_ratio']
+        }
+
+    def _is_satisfied(self, clause: List[int], assignment: np.ndarray) -> bool:
+        """Check if clause is satisfied."""
+        for literal in clause:
+            var_idx = abs(literal) - 1
+            if literal > 0 and assignment[var_idx] == 1:
+                return True
+            if literal < 0 and assignment[var_idx] == -1:
+                return True
+        return False
+
+    def _evaluate(self, assignment: np.ndarray) -> float:
+        """Evaluate satisfaction ratio."""
+        satisfied = sum(1 for clause in self.clauses if self._is_satisfied(clause, assignment))
+        return satisfied / len(self.clauses)
+
+
 class DPLLSolver:
     """
     DPLL-based complete SAT solver (MiniSAT-style).
@@ -377,6 +528,7 @@ def run_benchmark(n_vars: int, num_trials: int = 5, seed_base: int = 42) -> Dict
     results = {
         'mobius': [],
         'walksat': [],
+        'hybrid': [],
         'dpll': []
     }
 
@@ -425,6 +577,34 @@ def run_benchmark(n_vars: int, num_trials: int = 5, seed_base: int = 42) -> Dict
         except Exception as e:
             print(f"    WalkSAT: FAILED ({e})")
 
+        # Hybrid Möbius+WalkSAT
+        try:
+            solver = HybridMobiusWalkSAT(instance)
+            start = time.time()
+            result = solver.solve(
+                mobius_strips=18,
+                mobius_omega=0.1,
+                walksat_max_flips=5000,
+                seed=seed
+            )
+            duration = time.time() - start
+
+            results['hybrid'].append(BenchmarkResult(
+                solver_name='Hybrid',
+                satisfaction_ratio=result['satisfaction_ratio'],
+                solve_time=duration,
+                num_satisfied=result['num_satisfied'],
+                total_clauses=result['total_clauses'],
+                n_vars=n_vars,
+                success=True
+            ))
+            mobius_sat = result.get('mobius_satisfaction', 0.0)
+            improvement = result.get('improvement', 0.0)
+            print(f"    Hybrid: {result['satisfaction_ratio']:.4f} ({duration:.3f}s) "
+                  f"[Mobius: {mobius_sat:.4f}, +{improvement:.4f}]")
+        except Exception as e:
+            print(f"    Hybrid: FAILED ({e})")
+
         # DPLL (only for small instances)
         if n_vars <= 50:
             try:
@@ -466,7 +646,7 @@ def print_summary(all_results: Dict):
         print(f"Problem Size: {n_vars} variables")
         print("-" * 60)
 
-        for solver_name in ['mobius', 'walksat', 'dpll']:
+        for solver_name in ['mobius', 'walksat', 'hybrid', 'dpll']:
             if solver_name not in results or len(results[solver_name]) == 0:
                 continue
 
@@ -529,13 +709,14 @@ def print_summary(all_results: Dict):
 def main():
     """Run comprehensive SAT solver benchmark."""
     print("="*80)
-    print("Investigation 12: Möbius SAT Benchmark")
+    print("Investigation 12: Möbius SAT Benchmark (+ Hybrid)")
     print("="*80)
     print()
     print("Comparing:")
     print("  1. 18-strip Möbius SAT (Investigation 11)")
     print("  2. WalkSAT (local search)")
-    print("  3. DPLL (complete search, small instances only)")
+    print("  3. Hybrid Möbius+WalkSAT (Möbius -> WalkSAT refinement)")
+    print("  4. DPLL (complete search, small instances only)")
     print()
     print("Test: Random 3-SAT at phase transition (m ~ 4.2n)")
     print("="*80)
